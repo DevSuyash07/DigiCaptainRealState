@@ -1,0 +1,175 @@
+// ==========================================
+// 1. ENUMS
+// ==========================================
+
+enum PropertyFor {
+  SALE
+  RENT
+}
+
+enum PropertyType {
+  APARTMENT
+  INDEPENDENT_HOUSE
+  VILLA
+  PLOT
+  BUILDER_FLOOR
+  OFFICE_SPACE
+  SHOP
+  SHOWROOM
+  WAREHOUSE
+  INDUSTRIAL_SHED
+  AGRICULTURAL_LAND
+  OTHER
+}
+
+enum PropertyStatus {
+  READY_TO_MOVE
+  UNDER_CONSTRUCTION
+  NEW_LAUNCH
+}
+
+enum TransactionType {
+  NEW_PROPERTY
+  RESALE
+}
+
+enum FurnishingStatus {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum OwnershipType {
+  FREEHOLD
+  LEASEHOLD
+  CO_OPERATIVE_SOCIETY
+  POWER_OF_ATTORNEY
+}
+
+enum FacingDirection {
+  NORTH
+  SOUTH
+  EAST
+  WEST
+  NORTH_EAST
+  NORTH_WEST
+  SOUTH_EAST
+  SOUTH_WEST
+}
+
+// ==========================================
+// 2. CORE PROPERTY MODEL
+// ==========================================
+
+model Property {
+  id                Int              @id @default(autoincrement())
+  
+  // 🔗 Relations
+  ownerId           Int
+  owner             User             @relation(fields: [ownerId], references: [id], onDelete: Cascade) 
+
+  // 📝 Basic Details
+  title             String
+  description       String?          @db.Text
+  propertyFor       PropertyFor      // CRITICAL: Missing in your draft
+  propertyType      PropertyType
+  propertyStatus    PropertyStatus?
+  transactionType   TransactionType?
+  ownershipType     OwnershipType?
+
+  // 💰 Pricing (CRITICAL: Missing in your draft)
+  price             Decimal          @db.Decimal(12, 2) // Max 9,999,999,999.99
+  maintenanceFee    Decimal?         @db.Decimal(10, 2)
+  bookingAmount     Decimal?         @db.Decimal(10, 2) // Token amount
+
+  // 📐 Areas
+  carpetArea        Decimal?         @db.Decimal(10, 2)
+  builtUpArea       Decimal?         @db.Decimal(10, 2)
+  superBuiltUpArea  Decimal?         @db.Decimal(10, 2)
+  plotArea          Decimal?         @db.Decimal(10, 2)
+
+  // 🏠 Configuration
+  bedrooms          Int?
+  bathrooms         Int?
+  balconies         Int?
+  furnishingStatus  FurnishingStatus?
+  
+  // 🏢 Floor details
+  floorNumber       Int?             // Ground floor = 0, Basement = -1
+  totalFloors       Int?
+  
+  // 🚗 Parking
+  coveredParking    Int?             @default(0)
+  openParking       Int?             @default(0)
+
+  // ✨ Property features
+  facing            FacingDirection?
+  ageOfProperty     Int?             // 0 for new
+  reraId            String?          
+
+  // 📍 Location Details
+  address           String
+  locality          String
+  city              String
+  state             String
+  postalCode        String?
+  latitude          Decimal?         @db.Decimal(10, 7) 
+  longitude         Decimal?         @db.Decimal(10, 7)
+
+  // ⏱ Timestamps & Soft Delete
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?        
+
+  // 🔗 Extended Relations Mapping
+  images            PropertyImage[]
+  amenities         Amenity[]        // Many-to-Many relation
+  
+  // (Assuming these models exist in your full schema as per your draft)
+  listings          Listing[]
+  accesses          PropertyAccess[]
+
+  // 🚀 Indexing for 99acres-level Search Speed
+  @@index([ownerId])
+  @@index([city, locality])         
+  @@index([propertyType, transactionType])
+  @@index([price])                   // Crucial for price range filters
+  @@index([deletedAt])
+}
+
+// ==========================================
+// 3. SUPPORTING RELATION MODELS
+// ==========================================
+
+model PropertyImage {
+  id          Int      @id @default(autoincrement())
+  url         String   // Cloudinary URL
+  isCover     Boolean  @default(false) // Allows frontend to pick the main thumbnail
+  propertyId  Int
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+model Amenity {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique // e.g., "SWIMMING_POOL", "GYM", "24X7_SECURITY"
+  iconUrl     String?    // Optional: for frontend UI
+  properties  Property[] // Implicit Many-to-Many relation managed by Prisma
+}
+
+// Minimal stubs for your custom relations so Prisma formats successfully
+// model Listing {
+  // id          Int      @id @default(autoincrement())
+  // propertyId  Int
+//  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+// }
+
+// model PropertyAccess {
+ // id          Int      @id @default(autoincrement())
+ // propertyId  Int
+ // property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // Note: Your User model must have propertyAccessesReceived and propertyAccessesGranted mapped to this.
+// }

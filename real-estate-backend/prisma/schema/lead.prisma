@@ -1,0 +1,62 @@
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  SITE_VISIT
+  NEGOTIATION
+  CONVERTED
+  LOST
+  JUNK             // Fake ya spam inquiries ko filter karne ke liye
+}
+
+// Lead kahan se aayi (Analytics ke liye)
+enum LeadSource {
+  WEB
+  APP
+  WHATSAPP
+  PAID_CAMPAIGN    // Google/FB Ads ke through
+  OFFLINE
+}
+
+model Lead {
+  id              Int        @id @default(autoincrement())
+
+  // Relations
+  listingId       Int
+  seekerId        Int?       // 🚨 Pointer (?): Taaki bina login kiye (Guest) bhi koi inquiry bhej sake
+
+  // Contact Details
+  name            String
+  phone           String
+  email           String?
+
+  // Inquiry Details
+  message         String?    @db.Text
+  source          LeadSource @default(WEB)
+
+  // 💰 Buyer's Budget Expectation (Decimals used for accurate currency values)
+  budgetMin       Decimal?   @db.Decimal(15, 2)
+  budgetMax       Decimal?   @db.Decimal(15, 2)
+
+  // 🛠️ CRM & Broker Workflow Fields (Pointers ?)
+  status          LeadStatus @default(NEW)
+  agentNotes      String?    @db.Text           // Broker/Owner apni yaad ke liye notes likh sake
+  nextFollowUp    DateTime?                     // Agli call kab karni hai?
+  siteVisitDate   DateTime?                     // Agar status SITE_VISIT hai, toh kis date/time ke liye?
+
+  // ⏱ Timestamps
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?  // Soft delete (Taaki accidentally lead delete na ho)
+
+  // 🔗 Relations Mapping
+  listing         Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seeker          User?      @relation(fields: [seekerId], references: [id]) // Optional Relation
+
+  // 🚀 Database Indexes for Fast CRM Queries
+  @@index([listingId])
+  @@index([seekerId])
+  @@index([status])
+  @@index([phone])           // Broker mostly phone number type karke purani lead search karte hain
+  @@index([nextFollowUp])    // "Today's Follow-ups" fetch karne ke liye query fast banayega
+}

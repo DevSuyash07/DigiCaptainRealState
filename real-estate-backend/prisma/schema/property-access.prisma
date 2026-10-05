@@ -1,0 +1,53 @@
+// Roles ko thoda aur define kiya gaya hai
+enum PropertyAccessRole {
+  CO_OWNER         // Joint property owners ke liye
+  BROKER           // External agent jisko property sell/rent karne ka contract mila hai
+  MANAGER          // Builder/Agency ka internal manager
+  LEAD_HANDLER     // Staff member jo sirf calls aur leads dekhega
+}
+
+// Access ka current status (Invitation workflow ke liye)
+enum AccessStatus {
+  PENDING          // Invite bheja gaya hai but accept nahi hua
+  ACTIVE           // Access chalu hai
+  REVOKED          // Owner ne access wapas le liya hai
+  EXPIRED          // Contract time khatam ho gaya
+}
+
+model PropertyAccess {
+  id              Int                @id @default(autoincrement())
+
+  // 🔗 Core Relations
+  propertyId      Int
+  userId          Int                // Jisko access mil raha hai
+  grantedById     Int?               // 🚨 Pointer (?): Jisne access diya (Audit trail ke liye)
+
+  // 🛡️ Role & Status
+  role            PropertyAccessRole
+  status          AccessStatus       @default(PENDING)
+
+  // 🎛️ Granular Permissions (Platform security ke liye bahut zaroori)
+  canEditDetails  Boolean            @default(false) // Property ki details ya price change kar sakta hai?
+  canPublish      Boolean            @default(false) // Listing ko draft se live kar sakta hai?
+  canManageLeads  Boolean            @default(false) // Inquiries aur phone numbers dekh sakta hai?
+
+  // ⏳ Time-bound Access
+  expiresAt       DateTime?          // 🚨 Pointer (?): Broker ka contract (e.g., 3 months) expire hone ki date
+
+  // ⏱ Timestamps
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  deletedAt       DateTime?          // Soft delete field
+
+  // 🔗 Relations Mapping
+  property        Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // Note: Ek hi table me User ke 2 references hain, isliye relation name (@relation("...")) dena zaroori hai
+  user            User               @relation("ReceivedAccess", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy       User?              @relation("GrantedAccess", fields: [grantedById], references: [id])
+
+  // 🚀 Constraints & Indexes
+  @@unique([propertyId, userId])     // Ek user ka ek property par sirf ek hi active access record hona chahiye
+  @@index([userId, status])          // User ko apna dashboard dikhane ke liye ("My Shared Properties")
+  @@index([propertyId, status])      // Owner ko dikhane ke liye ki "Kis-kis ko access diya hua hai"
+}

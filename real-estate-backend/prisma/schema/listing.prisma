@@ -1,0 +1,68 @@
+enum ListingPurpose {
+  SALE
+  RENT
+  LEASE          // Commercial properties ke liye Lease option add kiya
+}
+
+enum ListingStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  PUBLISHED
+  REJECTED
+  PAUSED
+  EXPIRED
+  CLOSED
+  DELETED        // Soft delete status
+}
+
+model Listing {
+  id               Int            @id @default(autoincrement())
+
+  // Core Relations
+  propertyId       Int
+  createdById      Int
+
+  // Type & Status
+  purpose          ListingPurpose
+  status           ListingStatus  @default(DRAFT)
+
+  // 💰 Financial Details (Decimals used for accurate money representation)
+  price            Decimal        @db.Decimal(15, 2) // Base Rent / Sale Price
+  isNegotiable     Boolean        @default(false)    // "Price Negotiable" tag ke liye
+  maintenancePrice Decimal?       @db.Decimal(10, 2) // Optional maintenance charge
+  securityDeposit  Decimal?       @db.Decimal(15, 2) // Rent/Lease ke case me zaroori
+  brokerage        Decimal?       @db.Decimal(10, 2) // Broker ki commission fees (Optional)
+
+  // 📝 Content
+  title            String
+  description      String?        @db.Text
+
+  // 📅 Availability & Workflow (Pointers ?)
+  availableFrom    DateTime?      // Kab se property khali hogi? (Especially for Rent)
+  rejectionReason  String?        @db.Text           // Agar admin reject kare, toh reason store karne ke liye
+
+  // ⭐ Platform / Monetization Features (99acres Specific)
+  isVerified       Boolean        @default(false)    // "Verified Property" badge dikhane ke liye
+  isFeatured       Boolean        @default(false)    // Paid/Premium listing (top pe dikhane ke liye)
+  featuredUntil    DateTime?                         // Featured status kab expire hoga?
+  viewCount        Int            @default(0)        // Listing pe kitne views aaye (Analytics)
+
+  // ⏱ Timestamps
+  publishedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?      // Soft delete field (Pointer)
+
+  // 🔗 Relations Mapping
+  property         Property       @relation(fields: [propertyId], references: [id]) 
+  createdBy        User           @relation(fields: [createdById], references: [id])
+  leads            Lead[]         // Is listing pe aayi hui inquiries
+
+  // 🚀 Database Indexes for Faster Queries
+  @@index([propertyId])
+  @@index([createdById])
+  @@index([status, purpose])
+  @@index([price])                       // Sabse common search: "Price Min to Max"
+  @@index([isVerified, isFeatured])      // Verified/Featured listings jaldi fetch karne ke liye
+}

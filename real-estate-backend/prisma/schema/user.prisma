@@ -1,0 +1,80 @@
+enum Role {
+  USER           // Regular buyer ya tenant
+  OWNER          // Property ka asli malik
+  AGENT          // Real Estate Broker / Agency
+  BUILDER        // Developer / Builder
+  ADMIN          // Platform Admin
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED         // Spamming ya fraud ke case me
+  DELETED        // Soft delete status
+}
+
+model User {
+  id                         Int             @id @default(autoincrement())
+  
+  // 👤 Basic Profile
+  name                       String
+  email                      String          @unique
+  password                   String?         // Backend enforce karega conditionally
+  
+  // 📱 Contact
+  phone                      String?         @unique 
+  profilePictureUrl          String?
+
+  // 🏢 Role & Status
+  role                       Role            @default(USER)
+  status                     AccountStatus   @default(ACTIVE)
+
+  // 👔 Professional Details for Agents/Builders (Pointers)
+  companyName                String?         
+  reraId                     String?         
+  experienceYears            Int?            
+  about                      String?         @db.Text 
+
+  // 🔐 Email Verification Workflow
+  emailVerified              Boolean         @default(false)
+  emailVerifiedAt            DateTime?
+  emailVerificationOtp       String?         // OTP ka hashed version store karne ke liye
+  emailVerificationExpiresAt DateTime?
+  
+  // 📱 Phone Verification Workflow
+  phoneVerified              Boolean         @default(false)
+  phoneVerifiedAt            DateTime?       
+  phoneVerificationOtp       String?         // ✨ ADDED: Phone OTP store karne ke liye
+  phoneVerificationExpiresAt DateTime?       // ✨ ADDED: Phone OTP expiry ke liye
+  
+  // 🏢 KYC Workflow
+  kycVerified                Boolean         @default(false) 
+  kycVerifiedAt              DateTime?
+
+  // 🔑 Security & Password Management
+  passwordChangedAt          DateTime?       // ✨ ADDED: Protect middleware me old tokens block karne ke liye
+  passwordResetOtp           String?         // ✨ ADDED: Forgot password OTP flow ke liye
+  passwordResetTokenHash     String?         @unique // (Optional) Agar future me email magic-link banani ho
+  passwordResetExpiresAt     DateTime?
+
+  // ⏱ Timestamps
+  createdAt                  DateTime        @default(now())
+  updatedAt                  DateTime        @updatedAt
+  deletedAt                  DateTime?       
+
+  // 🔗 Relations Mapping (Ensure ye models dusri jagah defined hon)
+  properties                 Property[]
+  listings                   Listing[]
+  leads                      Lead[]          
+  
+  // 🚨 PropertyAccess relations mapped correctly to avoid ambiguity
+  propertyAccessesReceived   PropertyAccess[] @relation("ReceivedAccess")
+  propertyAccessesGranted    PropertyAccess[] @relation("GrantedAccess")
+
+  // 🚀 Database Indexes for Faster Queries
+  @@index([role])
+  @@index([status])
+  @@index([phone])                       
+  @@index([kycVerified])                 
+}
