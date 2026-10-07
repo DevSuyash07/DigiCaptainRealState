@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   PhoneCall,
-  Sparkles
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { CITIES } from '../data/mockProperties';
 
@@ -23,7 +24,8 @@ export default function Header({
   onOpenAuth,
   activeTab,
   setActiveTab,
-  onNavigate
+  onNavigate,
+  currentPath
 }) {
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -36,7 +38,7 @@ export default function Header({
 
   const handleTabClick = (tab) => {
     setActiveTab(tab);
-    if (onNavigate) onNavigate('/');
+    if (onNavigate) onNavigate('/collection');
   };
 
   return (
@@ -52,6 +54,12 @@ export default function Header({
             <span>RERA Approved Projects Only</span>
           </div>
           <div className="flex items-center space-x-4">
+            <button 
+              onClick={() => onNavigate('/collection')} 
+              className="hover:text-white transition font-medium"
+            >
+              All Listings
+            </button>
             <a href="#emi-calc" className="hover:text-white transition">EMI Calculator</a>
             <a href="#trends" className="hover:text-white transition">Price Trends</a>
             <span className="text-slate-500">|</span>
@@ -124,9 +132,21 @@ export default function Header({
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center space-x-1">
             <button
+              onClick={() => onNavigate('/collection')}
+              className={`px-3.5 py-2 text-sm font-bold rounded-lg transition flex items-center space-x-1.5 ${
+                currentPath === '/collection' || currentPath === '/properties'
+                  ? 'text-brand-700 bg-brand-50'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-brand-600" />
+              <span>All Collection</span>
+              <span className="text-[10px] bg-amber-400 text-slate-900 font-extrabold px-1.5 py-0.2 rounded-full uppercase">99acres</span>
+            </button>
+            <button
               onClick={() => handleTabClick('buy')}
               className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition ${
-                activeTab === 'buy' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                activeTab === 'buy' && (currentPath === '/collection' || currentPath === '/') ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               Buy
@@ -134,7 +154,7 @@ export default function Header({
             <button
               onClick={() => handleTabClick('rent')}
               className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition ${
-                activeTab === 'rent' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                activeTab === 'rent' && currentPath === '/collection' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               Rent
@@ -142,7 +162,7 @@ export default function Header({
             <button
               onClick={() => handleTabClick('commercial')}
               className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition ${
-                activeTab === 'commercial' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                activeTab === 'commercial' && currentPath === '/collection' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               Commercial
@@ -150,17 +170,11 @@ export default function Header({
             <button
               onClick={() => handleTabClick('plot')}
               className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition ${
-                activeTab === 'plot' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                activeTab === 'plot' && currentPath === '/collection' ? 'text-brand-600 bg-brand-50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               Plots / Land
             </button>
-            <a
-              href="#featured"
-              className="px-3.5 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
-            >
-              Top Projects
-            </a>
           </nav>
 
           {/* Right Action CTAs */}
@@ -215,6 +229,16 @@ export default function Header({
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3">
+          <button
+            onClick={() => {
+              onNavigate('/collection');
+              setMobileMenuOpen(false);
+            }}
+            className="w-full flex items-center justify-center space-x-2 py-2.5 bg-brand-50 text-brand-700 font-bold rounded-xl border border-brand-200"
+          >
+            <Layers className="w-4 h-4" />
+            <span>View All Properties Collection</span>
+          </button>
           <div className="grid grid-cols-2 gap-2 pb-3 border-b border-slate-100">
             {['buy', 'rent', 'commercial', 'plot'].map((tab) => (
               <button
