@@ -23,7 +23,7 @@ export default function EmiCalculator() {
 
   return (
     <section id="emi-calc" className="py-12 bg-[#f4f7fb]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="bg-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-200 shadow-card">
           

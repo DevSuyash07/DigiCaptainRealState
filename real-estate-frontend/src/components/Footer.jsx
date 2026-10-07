@@ -4,7 +4,7 @@ import { Building2, ShieldCheck, Sparkles, Phone, Mail, MapPin } from 'lucide-re
 export default function Footer() {
   return (
     <footer className="bg-[#00203d] text-slate-300 pt-16 pb-12 border-t border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Brand & Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800">

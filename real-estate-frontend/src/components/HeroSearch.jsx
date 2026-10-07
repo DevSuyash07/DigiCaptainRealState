@@ -69,7 +69,7 @@ export default function HeroSearch({
         <div className="absolute bottom-0 left-10 w-80 h-80 rounded-full bg-amber-400 blur-3xl"></div>
       </div>
 
-      <div className="max-w-5xl mx-auto relative z-10">
+      <div className="max-w-[1400px] mx-auto relative z-10">
         
         {/* Hero Headings */}
         <div className="text-center max-w-3xl mx-auto mb-8">

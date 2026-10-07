@@ -45,7 +45,7 @@ export default function Header({
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
       {/* Top micro-bar */}
       <div className="bg-[#002e54] text-slate-300 text-xs py-1 px-4 hidden md:block">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <span className="flex items-center text-amber-400 font-medium">
               <Sparkles className="w-3.5 h-3.5 mr-1" /> India's #1 Property & Real Estate Portal
@@ -74,7 +74,7 @@ export default function Header({
       </div>
 
       {/* Main navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-18 py-2">
           
           {/* Brand Logo & City Selector */}
