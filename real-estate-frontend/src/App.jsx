@@ -4,6 +4,7 @@ import HeroSearch from './components/HeroSearch';
 import LocalityCards from './components/LocalityCards';
 import PropertyCard from './components/PropertyCard';
 import PropertyDetailPage from './components/PropertyDetailPage';
+import CollectionPage from './components/CollectionPage';
 import PostPropertyModal from './components/PostPropertyModal';
 import EmiCalculator from './components/EmiCalculator';
 import AuthModal from './components/AuthModal';
@@ -22,12 +23,15 @@ import {
   Building2, 
   Sparkles, 
   CheckCircle2, 
-  RefreshCw,
-  Home,
-  Compass,
-  Building,
-  Key,
-  ArrowLeft
+  RefreshCw, 
+  Home, 
+  Compass, 
+  Building, 
+  Key, 
+  ArrowLeft,
+  SlidersHorizontal,
+  ArrowRight,
+  Layers
 } from 'lucide-react';
 
 export default function App() {
@@ -93,6 +97,8 @@ export default function App() {
   const propertySlug = propertyMatch ? propertyMatch[1] : null;
   const currentProperty = propertySlug ? findPropertyBySlug(properties, propertySlug) : null;
 
+  const isCollectionRoute = currentPath === '/collection' || currentPath === '/properties' || currentPath.startsWith('/collection');
+
   // Shortlist Toggle
   const handleToggleShortlist = (propertyId) => {
     setShortlistIds((prev) => 
@@ -110,39 +116,26 @@ export default function App() {
     return properties.filter((p) => shortlistIds.includes(p.id));
   }, [properties, shortlistIds]);
 
-  // Filtered Properties Computation
+  // Filtered Properties for Home preview
   const filteredProperties = useMemo(() => {
     return properties.filter((prop) => {
-      // 1. City Match (allow matching if user searches broad or selects city)
       if (selectedCity && prop.city !== selectedCity) {
-        // If user actively searches a specific locality from another city, allow it
         if (!searchQuery) return false;
       }
-
-      // 2. Purpose / Tab Match (Buy vs Rent vs Commercial vs Plot)
       if (activeTab === 'rent' && prop.purpose !== 'rent') return false;
       if (activeTab === 'buy' && prop.purpose !== 'buy') return false;
       if (activeTab === 'commercial' && prop.type !== 'commercial') return false;
       if (activeTab === 'plot' && prop.type !== 'plot') return false;
-
-      // 3. Property Type Filter
       if (selectedType !== 'all' && prop.type !== selectedType) return false;
-
-      // 4. BHK Filter
       if (selectedBhk.length > 0) {
         const matchesBhk = selectedBhk.some((b) => prop.bhk.includes(b.split(' ')[0]));
         if (!matchesBhk) return false;
       }
-
-      // 5. Budget Filter
       if (selectedBudget.min > 0 && prop.price < selectedBudget.min) return false;
       if (selectedBudget.max < 1000000000 && prop.price > selectedBudget.max) return false;
-
-      // 6. Verified & Owner Filters
       if (onlyVerified && !prop.verified) return false;
       if (onlyOwner && !prop.postedBy.includes('Owner')) return false;
 
-      // 7. Search Query text
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const inTitle = prop.title.toLowerCase().includes(q);
@@ -157,7 +150,7 @@ export default function App() {
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
       if (sortBy === 'area-desc') return b.areaSqFt - a.areaSqFt;
-      return 0; // relevance
+      return 0;
     });
   }, [
     properties,
@@ -180,11 +173,7 @@ export default function App() {
   const handleSelectLocality = (localityName) => {
     const clean = localityName.split(',')[0];
     setSearchQuery(clean);
-    navigateTo('/');
-    const element = document.getElementById('listings-section');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+    navigateTo('/collection');
   };
 
   const resetFilters = () => {
@@ -215,9 +204,10 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onNavigate={navigateTo}
+        currentPath={currentPath}
       />
 
-      {/* Route Views: Property Detail Page vs Home Marketplace Listings */}
+      {/* Main View Router */}
       {propertySlug ? (
         currentProperty ? (
           <PropertyDetailPage
@@ -236,7 +226,7 @@ export default function App() {
               The property you are looking for may have been removed, sold, or the link may be invalid.
             </p>
             <button
-              onClick={() => navigateTo('/')}
+              onClick={() => navigateTo('/collection')}
               className="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md transition inline-flex items-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -244,7 +234,21 @@ export default function App() {
             </button>
           </div>
         )
+      ) : isCollectionRoute ? (
+        /* Full 99acres Detailed Collection Page with Left Filter Sidebar */
+        <CollectionPage
+          properties={properties}
+          selectedCity={selectedCity}
+          setSelectedCity={setSelectedCity}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          shortlistIds={shortlistIds}
+          onToggleShortlist={handleToggleShortlist}
+          onNavigate={navigateTo}
+          onOpenAuth={() => setIsAuthOpen(true)}
+        />
       ) : (
+        /* Marketplace Home Page View */
         <>
           {/* Hero Multi-Tab Search Engine */}
           <HeroSearch
@@ -263,14 +267,38 @@ export default function App() {
             setOnlyVerified={setOnlyVerified}
             onlyOwner={onlyOwner}
             setOnlyOwner={setOnlyOwner}
-            onPerformSearch={() => {
-              const el = document.getElementById('listings-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onPerformSearch={() => navigateTo('/collection')}
           />
 
           {/* Market Intelligence / Trending Localities */}
           <LocalityCards onSelectLocality={handleSelectLocality} />
+
+          {/* Collection Showcase Banner */}
+          <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <div className="bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2 text-center md:text-left">
+                <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>99acres Collection View</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black">
+                  Explore All Properties with Detailed Filters
+                </h2>
+                <p className="text-slate-200 text-xs sm:text-sm max-w-xl">
+                  Filter by Budget, BHK, Locality, Possession status, RERA approval, Furnishing, Facing, and Amenities in our full collection page.
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigateTo('/collection')}
+                className="shrink-0 bg-white hover:bg-slate-100 text-brand-900 font-extrabold px-6 py-3.5 rounded-2xl text-sm shadow-lg hover:shadow-xl transition transform active:scale-95 flex items-center space-x-2"
+              >
+                <Layers className="w-4 h-4 text-brand-700" />
+                <span>Open Collection & Filters</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </section>
 
           {/* Main Listings Section */}
           <main id="listings-section" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -305,13 +333,21 @@ export default function App() {
               </div>
 
               <div className="flex items-center space-x-3 self-end sm:self-auto">
+                <button
+                  onClick={() => navigateTo('/collection')}
+                  className="bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-brand-600" />
+                  <span>Full Filter Sidebar</span>
+                </button>
+
                 {(searchQuery || selectedType !== 'all' || selectedBhk.length > 0 || onlyVerified || onlyOwner) && (
                   <button
                     onClick={resetFilters}
                     className="text-xs font-bold text-brand-600 hover:text-brand-800 flex items-center space-x-1"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Reset Filters</span>
+                    <span>Reset</span>
                   </button>
                 )}
 
@@ -360,6 +396,18 @@ export default function App() {
                 ))}
               </div>
             )}
+
+            {/* View Full Collection button */}
+            <div className="text-center mt-10">
+              <button
+                onClick={() => navigateTo('/collection')}
+                className="inline-flex items-center space-x-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm shadow-lg shadow-brand-500/25 transition transform active:scale-95"
+              >
+                <Layers className="w-4 h-4" />
+                <span>View All Properties in Detailed Collection Page</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
 
           </main>
 
