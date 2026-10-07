@@ -5,7 +5,7 @@ import { FEATURED_LOCALITIES } from '../data/mockProperties';
 export default function LocalityCards({ onSelectLocality }) {
   return (
     <section id="trends" className="py-12 bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8">

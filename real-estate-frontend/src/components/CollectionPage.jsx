@@ -846,7 +846,7 @@ export default function CollectionPage({
       
       {/* Top Banner / Breadcrumb Bar */}
       <div className="bg-white border-b border-slate-200 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
           
           {/* Breadcrumb path */}
           <nav className="flex items-center space-x-2 text-xs text-slate-500">
@@ -874,7 +874,7 @@ export default function CollectionPage({
       </div>
 
       {/* Main 2-Column Collection Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           
           {/* LEFT COLUMN: 99acres Detailed Filter Sidebar (Desktop) */}

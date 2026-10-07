@@ -274,7 +274,7 @@ export default function App() {
           <LocalityCards onSelectLocality={handleSelectLocality} />
 
           {/* Collection Showcase Banner */}
-          <section className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <section className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
             <div className="bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="space-y-2 text-center md:text-left">
                 <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider text-amber-300">
@@ -301,7 +301,7 @@ export default function App() {
           </section>
 
           {/* Main Listings Section */}
-          <main id="listings-section" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <main id="listings-section" className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
             
             {/* Category Shortcuts */}
             <div className="flex items-center space-x-2 overflow-x-auto pb-4 mb-6 scrollbar-none">

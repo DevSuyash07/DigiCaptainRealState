@@ -91,7 +91,7 @@ export default function PropertyDetailPage({
     <div className="min-h-screen bg-[#f4f7fb] pb-16 animate-fadeIn">
       {/* Top Breadcrumb Bar */}
       <div className="bg-white border-b border-slate-200 sticky top-16 sm:top-[72px] z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-2 text-xs sm:text-sm text-slate-500 overflow-x-auto py-1">
             <button
               onClick={() => onNavigate('/')}
@@ -145,7 +145,7 @@ export default function PropertyDetailPage({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         
         {/* Main Title & Price Header */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm mb-6">
