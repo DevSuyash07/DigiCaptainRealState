@@ -1,1 +1,398 @@
-import React, { useState, useEffect, useMemo } from 'react';\nimport Header from './components/Header';\nimport HeroSearch from './components/HeroSearch';\nimport LocalityCards from './components/LocalityCards';\nimport PropertyCard from './components/PropertyCard';\nimport PropertyDetailPage from './components/PropertyDetailPage';\nimport PostPropertyModal from './components/PostPropertyModal';\nimport EmiCalculator from './components/EmiCalculator';\nimport AuthModal from './components/AuthModal';\nimport ShortlistDrawer from './components/ShortlistDrawer';\nimport Footer from './components/Footer';\nimport { \n  INITIAL_PROPERTIES, \n  BUDGET_RANGES, \n  PROPERTY_TYPES,\n  getPropertySlug,\n  findPropertyBySlug\n} from './data/mockProperties';\nimport { \n  Filter, \n  ArrowUpDown, \n  Building2, \n  Sparkles, \n  CheckCircle2, \n  RefreshCw,\n  Home,\n  Compass,\n  Building,\n  Key,\n  ArrowLeft\n} from 'lucide-react';\n\nexport default function App() {\n  const [properties, setProperties] = useState(INITIAL_PROPERTIES);\n  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);\n  const [selectedCity, setSelectedCity] = useState('Delhi NCR');\n  const [activeTab, setActiveTab] = useState('buy'); // 'buy', 'rent', 'commercial', 'plot'\n  \n  // Search and Filter states\n  const [searchQuery, setSearchQuery] = useState('');\n  const [selectedType, setSelectedType] = useState('all');\n  const [selectedBhk, setSelectedBhk] = useState([]);\n  const [selectedBudget, setSelectedBudget] = useState(BUDGET_RANGES[0]);\n  const [onlyVerified, setOnlyVerified] = useState(false);\n  const [onlyOwner, setOnlyOwner] = useState(false);\n  const [sortBy, setSortBy] = useState('relevance');\n\n  // Modals & Drawers\n  const [isPostPropertyOpen, setIsPostPropertyOpen] = useState(false);\n  const [isAuthOpen, setIsAuthOpen] = useState(false);\n  const [isShortlistOpen, setIsShortlistOpen] = useState(false);\n  \n  // Shortlisted property IDs\n  const [shortlistIds, setShortlistIds] = useState(['prop-1', 'prop-3']);\n\n  // Handle URL history and routing\n  const navigateTo = (path) => {\n    if (window.location.pathname !== path) {\n      window.history.pushState({}, '', path);\n    }\n    setCurrentPath(path);\n    window.scrollTo({ top: 0, behavior: 'smooth' });\n  };\n\n  useEffect(() => {\n    const handlePopState = () => {\n      setCurrentPath(window.location.pathname);\n    };\n    window.addEventListener('popstate', handlePopState);\n    return () => window.removeEventListener('popstate', handlePopState);\n  }, []);\n\n  // Fetch properties from backend if available\n  useEffect(() => {\n    fetch('/api/v1/properties')\n      .then((res) => {\n        if (!res.ok) throw new Error('Network error');\n        return res.json();\n      })\n      .then((data) => {\n        if (data && Array.isArray(data.data) && data.data.length > 0) {\n          // Merge with initial rich data\n          setProperties([...data.data, ...INITIAL_PROPERTIES]);\n        }\n      })\n      .catch(() => {\n        // Fallback to rich offline dataset\n      });\n  }, []);\n\n  // Determine current active route for /property/:slug\n  const propertyMatch = currentPath.match(/^\\/property\\/(.+)$/);\n  const propertySlug = propertyMatch ? propertyMatch[1] : null;\n  const currentProperty = propertySlug ? findPropertyBySlug(properties, propertySlug) : null;\n\n  // Shortlist Toggle\n  const handleToggleShortlist = (propertyId) => {\n    setShortlistIds((prev) => \n      prev.includes(propertyId)\n        ? prev.filter((id) => id !== propertyId)\n        : [...prev, propertyId]\n    );\n  };\n\n  const handleRemoveShortlist = (propertyId) => {\n    setShortlistIds((prev) => prev.filter((id) => id !== propertyId));\n  };\n\n  const shortlistedProperties = useMemo(() => {\n    return properties.filter((p) => shortlistIds.includes(p.id));\n  }, [properties, shortlistIds]);\n\n  // Filtered Properties Computation\n  const filteredProperties = useMemo(() => {\n    return properties.filter((prop) => {\n      // 1. City Match (allow matching if user searches broad or selects city)\n      if (selectedCity && prop.city !== selectedCity) {\n        // If user actively searches a specific locality from another city, allow it\n        if (!searchQuery) return false;\n      }\n\n      // 2. Purpose / Tab Match (Buy vs Rent vs Commercial vs Plot)\n      if (activeTab === 'rent' && prop.purpose !== 'rent') return false;\n      if (activeTab === 'buy' && prop.purpose !== 'buy') return false;\n      if (activeTab === 'commercial' && prop.type !== 'commercial') return false;\n      if (activeTab === 'plot' && prop.type !== 'plot') return false;\n\n      // 3. Property Type Filter\n      if (selectedType !== 'all' && prop.type !== selectedType) return false;\n\n      // 4. BHK Filter\n      if (selectedBhk.length > 0) {\n        const matchesBhk = selectedBhk.some((b) => prop.bhk.includes(b.split(' ')[0]));\n        if (!matchesBhk) return false;\n      }\n\n      // 5. Budget Filter\n      if (selectedBudget.min > 0 && prop.price < selectedBudget.min) return false;\n      if (selectedBudget.max < 1000000000 && prop.price > selectedBudget.max) return false;\n\n      // 6. Verified & Owner Filters\n      if (onlyVerified && !prop.verified) return false;\n      if (onlyOwner && !prop.postedBy.includes('Owner')) return false;\n\n      // 7. Search Query text\n      if (searchQuery.trim()) {\n        const q = searchQuery.toLowerCase();\n        const inTitle = prop.title.toLowerCase().includes(q);\n        const inLocality = prop.locality.toLowerCase().includes(q);\n        const inCity = prop.city.toLowerCase().includes(q);\n        const inDesc = prop.description?.toLowerCase().includes(q);\n        if (!inTitle && !inLocality && !inCity && !inDesc) return false;\n      }\n\n      return true;\n    }).sort((a, b) => {\n      if (sortBy === 'price-asc') return a.price - b.price;\n      if (sortBy === 'price-desc') return b.price - a.price;\n      if (sortBy === 'area-desc') return b.areaSqFt - a.areaSqFt;\n      return 0; // relevance\n    });\n  }, [\n    properties,\n    selectedCity,\n    activeTab,\n    selectedType,\n    selectedBhk,\n    selectedBudget,\n    onlyVerified,\n    onlyOwner,\n    searchQuery,\n    sortBy\n  ]);\n\n  const handleAddProperty = (newProp) => {\n    setProperties((prev) => [newProp, ...prev]);\n    navigateTo(`/property/${getPropertySlug(newProp)}`);\n  };\n\n  const handleSelectLocality = (localityName) => {\n    const clean = localityName.split(',')[0];\n    setSearchQuery(clean);\n    navigateTo('/');\n    const element = document.getElementById('listings-section');\n    if (element) {\n      element.scrollIntoView({ behavior: 'smooth' });\n    }\n  };\n\n  const resetFilters = () => {\n    setSearchQuery('');\n    setSelectedType('all');\n    setSelectedBhk([]);\n    setSelectedBudget(BUDGET_RANGES[0]);\n    setOnlyVerified(false);\n    setOnlyOwner(false);\n    setSortBy('relevance');\n  };\n\n  const handleSelectProperty = (prop) => {\n    navigateTo(`/property/${getPropertySlug(prop)}`);\n  };\n\n  return (\n    <div className=\"min-h-screen flex flex-col bg-[#f4f7fb]\">\n      \n      {/* 99acres Header */}\n      <Header\n        selectedCity={selectedCity}\n        setSelectedCity={setSelectedCity}\n        shortlistCount={shortlistIds.length}\n        onOpenShortlist={() => setIsShortlistOpen(true)}\n        onOpenPostProperty={() => setIsPostPropertyOpen(true)}\n        onOpenAuth={() => setIsAuthOpen(true)}\n        activeTab={activeTab}\n        setActiveTab={setActiveTab}\n        onNavigate={navigateTo}\n      />\n\n      {/* Route Views: Property Detail Page vs Home Marketplace Listings */}\n      {propertySlug ? (\n        currentProperty ? (\n          <PropertyDetailPage\n            property={currentProperty}\n            allProperties={properties}\n            onNavigate={navigateTo}\n            isShortlisted={shortlistIds.includes(currentProperty.id)}\n            onToggleShortlist={handleToggleShortlist}\n            onOpenAuth={() => setIsAuthOpen(true)}\n          />\n        ) : (\n          <div className=\"flex-1 max-w-4xl mx-auto px-4 py-20 text-center\">\n            <Building2 className=\"w-16 h-16 text-slate-300 mx-auto mb-3\" />\n            <h2 className=\"text-2xl font-black text-slate-800\">Property Listing Not Found</h2>\n            <p className=\"text-sm text-slate-500 mt-2 mb-6 max-w-md mx-auto\">\n              The property you are looking for may have been removed, sold, or the link may be invalid.\n            </p>\n            <button\n              onClick={() => navigateTo('/')}\n              className=\"bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md transition inline-flex items-center space-x-2\"\n            >\n              <ArrowLeft className=\"w-4 h-4\" />\n              <span>Browse All Properties</span>\n            </button>\n          </div>\n        )\n      ) : (\n        <>\n          {/* Hero Multi-Tab Search Engine */}\n          <HeroSearch\n            activeTab={activeTab}\n            setActiveTab={setActiveTab}\n            selectedCity={selectedCity}\n            searchQuery={searchQuery}\n            setSearchQuery={setSearchQuery}\n            selectedType={selectedType}\n            setSelectedType={setSelectedType}\n            selectedBhk={selectedBhk}\n            setSelectedBhk={setSelectedBhk}\n            selectedBudget={selectedBudget}\n            setSelectedBudget={setSelectedBudget}\n            onlyVerified={onlyVerified}\n            setOnlyVerified={setOnlyVerified}\n            onlyOwner={onlyOwner}\n            setOnlyOwner={setOnlyOwner}\n            onPerformSearch={() => {\n              const el = document.getElementById('listings-section');\n              if (el) el.scrollIntoView({ behavior: 'smooth' });\n            }}\n          />\n\n          {/* Market Intelligence / Trending Localities */}\n          <LocalityCards onSelectLocality={handleSelectLocality} />\n\n          {/* Main Listings Section */}\n          <main id=\"listings-section\" className=\"flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10\">\n            \n            {/* Category Shortcuts */}\n            <div className=\"flex items-center space-x-2 overflow-x-auto pb-4 mb-6 scrollbar-none\">\n              <span className=\"text-xs font-bold text-slate-400 uppercase shrink-0 mr-2\">Quick Browse:</span>\n              {PROPERTY_TYPES.map((t) => (\n                <button\n                  key={t.id}\n                  onClick={() => setSelectedType(t.id)}\n                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition border ${\n                    selectedType === t.id\n                      ? 'bg-brand-600 text-white border-brand-600 shadow-xs'\n                      : 'bg-white text-slate-700 border-slate-200 hover:border-brand-300 hover:bg-slate-50'\n                  }`}\n                >\n                  {t.label}\n                </button>\n              ))}\n            </div>\n\n            {/* Results Bar & Sorting */}\n            <div className=\"bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6\">\n              <div>\n                <h2 className=\"text-lg sm:text-xl font-black text-slate-900\">\n                  {filteredProperties.length} Properties in {selectedCity} {searchQuery && `matching \"${searchQuery}\"`}\n                </h2>\n                <p className=\"text-xs text-slate-500 mt-0.5\">\n                  Verified listings with photos, floor plans & owner contact details\n                </p>\n              </div>\n\n              <div className=\"flex items-center space-x-3 self-end sm:self-auto\">\n                {(searchQuery || selectedType !== 'all' || selectedBhk.length > 0 || onlyVerified || onlyOwner) && (\n                  <button\n                    onClick={resetFilters}\n                    className=\"text-xs font-bold text-brand-600 hover:text-brand-800 flex items-center space-x-1\"\n                  >\n                    <RefreshCw className=\"w-3.5 h-3.5\" />\n                    <span>Reset Filters</span>\n                  </button>\n                )}\n\n                <div className=\"flex items-center space-x-2\">\n                  <ArrowUpDown className=\"w-4 h-4 text-slate-400\" />\n                  <select\n                    value={sortBy}\n                    onChange={(e) => setSortBy(e.target.value)}\n                    className=\"bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500\"\n                  >\n                    <option value=\"relevance\">Sort by: Relevance</option>\n                    <option value=\"price-asc\">Price: Low to High</option>\n                    <option value=\"price-desc\">Price: High to Low</option>\n                    <option value=\"area-desc\">Area: Largest First</option>\n                  </select>\n                </div>\n              </div>\n            </div>\n\n            {/* Property Cards Feed */}\n            {filteredProperties.length === 0 ? (\n              <div className=\"bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm my-8\">\n                <Building2 className=\"w-16 h-16 text-slate-300 mx-auto mb-3\" />\n                <h3 className=\"text-xl font-black text-slate-800\">No matching properties found</h3>\n                <p className=\"text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto\">\n                  We couldn't find any properties matching your exact filter criteria in {selectedCity}. Try expanding your budget or resetting filters.\n                </p>\n                <button\n                  onClick={resetFilters}\n                  className=\"mt-6 bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-md transition\"\n                >\n                  Show All Properties\n                </button>\n              </div>\n            ) : (\n              <div className=\"space-y-4\">\n                {filteredProperties.map((prop) => (\n                  <PropertyCard\n                    key={prop.id}\n                    property={prop}\n                    isShortlisted={shortlistIds.includes(prop.id)}\n                    onToggleShortlist={handleToggleShortlist}\n                    onSelectProperty={handleSelectProperty}\n                    onContactClick={handleSelectProperty}\n                  />\n                ))}\n              </div>\n            )}\n\n          </main>\n\n          {/* Interactive Home Loan EMI Calculator */}\n          <EmiCalculator />\n        </>\n      )}\n\n      {/* 99acres Footer */}\n      <Footer />\n\n      {/* Post Free Property Ad Modal */}\n      <PostPropertyModal\n        isOpen={isPostPropertyOpen}\n        onClose={() => setIsPostPropertyOpen(false)}\n        onPropertyAdded={handleAddProperty}\n      />\n\n      {/* User Auth Modal */}\n      <AuthModal\n        isOpen={isAuthOpen}\n        onClose={() => setIsAuthOpen(false)}\n      />\n\n      {/* Shortlist Drawer */}\n      <ShortlistDrawer\n        isOpen={isShortlistOpen}\n        onClose={() => setIsShortlistOpen(false)}\n        shortlistedProperties={shortlistedProperties}\n        onRemoveShortlist={handleRemoveShortlist}\n        onSelectProperty={handleSelectProperty}\n      />\n\n    </div>\n  );\n}\n
+import React, { useState, useEffect, useMemo } from 'react';
+import Header from './components/Header';
+import HeroSearch from './components/HeroSearch';
+import LocalityCards from './components/LocalityCards';
+import PropertyCard from './components/PropertyCard';
+import PropertyDetailPage from './components/PropertyDetailPage';
+import PostPropertyModal from './components/PostPropertyModal';
+import EmiCalculator from './components/EmiCalculator';
+import AuthModal from './components/AuthModal';
+import ShortlistDrawer from './components/ShortlistDrawer';
+import Footer from './components/Footer';
+import { 
+  INITIAL_PROPERTIES, 
+  BUDGET_RANGES, 
+  PROPERTY_TYPES,
+  getPropertySlug,
+  findPropertyBySlug
+} from './data/mockProperties';
+import { 
+  Filter, 
+  ArrowUpDown, 
+  Building2, 
+  Sparkles, 
+  CheckCircle2, 
+  RefreshCw,
+  Home,
+  Compass,
+  Building,
+  Key,
+  ArrowLeft
+} from 'lucide-react';
+
+export default function App() {
+  const [properties, setProperties] = useState(INITIAL_PROPERTIES);
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const [selectedCity, setSelectedCity] = useState('Delhi NCR');
+  const [activeTab, setActiveTab] = useState('buy'); // 'buy', 'rent', 'commercial', 'plot'
+  
+  // Search and Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('all');
+  const [selectedBhk, setSelectedBhk] = useState([]);
+  const [selectedBudget, setSelectedBudget] = useState(BUDGET_RANGES[0]);
+  const [onlyVerified, setOnlyVerified] = useState(false);
+  const [onlyOwner, setOnlyOwner] = useState(false);
+  const [sortBy, setSortBy] = useState('relevance');
+
+  // Modals & Drawers
+  const [isPostPropertyOpen, setIsPostPropertyOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isShortlistOpen, setIsShortlistOpen] = useState(false);
+  
+  // Shortlisted property IDs
+  const [shortlistIds, setShortlistIds] = useState(['prop-1', 'prop-3']);
+
+  // Handle URL history and routing
+  const navigateTo = (path) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Fetch properties from backend if available
+  useEffect(() => {
+    fetch('/api/v1/properties')
+      .then((res) => {
+        if (!res.ok) throw new Error('Network error');
+        return res.json();
+      })
+      .then((data) => {
+        if (data && Array.isArray(data.data) && data.data.length > 0) {
+          // Merge with initial rich data
+          setProperties([...data.data, ...INITIAL_PROPERTIES]);
+        }
+      })
+      .catch(() => {
+        // Fallback to rich offline dataset
+      });
+  }, []);
+
+  // Determine current active route for /property/:slug
+  const propertyMatch = currentPath.match(/^\/property\/(.+)$/);
+  const propertySlug = propertyMatch ? propertyMatch[1] : null;
+  const currentProperty = propertySlug ? findPropertyBySlug(properties, propertySlug) : null;
+
+  // Shortlist Toggle
+  const handleToggleShortlist = (propertyId) => {
+    setShortlistIds((prev) => 
+      prev.includes(propertyId)
+        ? prev.filter((id) => id !== propertyId)
+        : [...prev, propertyId]
+    );
+  };
+
+  const handleRemoveShortlist = (propertyId) => {
+    setShortlistIds((prev) => prev.filter((id) => id !== propertyId));
+  };
+
+  const shortlistedProperties = useMemo(() => {
+    return properties.filter((p) => shortlistIds.includes(p.id));
+  }, [properties, shortlistIds]);
+
+  // Filtered Properties Computation
+  const filteredProperties = useMemo(() => {
+    return properties.filter((prop) => {
+      // 1. City Match (allow matching if user searches broad or selects city)
+      if (selectedCity && prop.city !== selectedCity) {
+        // If user actively searches a specific locality from another city, allow it
+        if (!searchQuery) return false;
+      }
+
+      // 2. Purpose / Tab Match (Buy vs Rent vs Commercial vs Plot)
+      if (activeTab === 'rent' && prop.purpose !== 'rent') return false;
+      if (activeTab === 'buy' && prop.purpose !== 'buy') return false;
+      if (activeTab === 'commercial' && prop.type !== 'commercial') return false;
+      if (activeTab === 'plot' && prop.type !== 'plot') return false;
+
+      // 3. Property Type Filter
+      if (selectedType !== 'all' && prop.type !== selectedType) return false;
+
+      // 4. BHK Filter
+      if (selectedBhk.length > 0) {
+        const matchesBhk = selectedBhk.some((b) => prop.bhk.includes(b.split(' ')[0]));
+        if (!matchesBhk) return false;
+      }
+
+      // 5. Budget Filter
+      if (selectedBudget.min > 0 && prop.price < selectedBudget.min) return false;
+      if (selectedBudget.max < 1000000000 && prop.price > selectedBudget.max) return false;
+
+      // 6. Verified & Owner Filters
+      if (onlyVerified && !prop.verified) return false;
+      if (onlyOwner && !prop.postedBy.includes('Owner')) return false;
+
+      // 7. Search Query text
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const inTitle = prop.title.toLowerCase().includes(q);
+        const inLocality = prop.locality.toLowerCase().includes(q);
+        const inCity = prop.city.toLowerCase().includes(q);
+        const inDesc = prop.description?.toLowerCase().includes(q);
+        if (!inTitle && !inLocality && !inCity && !inDesc) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'price-asc') return a.price - b.price;
+      if (sortBy === 'price-desc') return b.price - a.price;
+      if (sortBy === 'area-desc') return b.areaSqFt - a.areaSqFt;
+      return 0; // relevance
+    });
+  }, [
+    properties,
+    selectedCity,
+    activeTab,
+    selectedType,
+    selectedBhk,
+    selectedBudget,
+    onlyVerified,
+    onlyOwner,
+    searchQuery,
+    sortBy
+  ]);
+
+  const handleAddProperty = (newProp) => {
+    setProperties((prev) => [newProp, ...prev]);
+    navigateTo(`/property/${getPropertySlug(newProp)}`);
+  };
+
+  const handleSelectLocality = (localityName) => {
+    const clean = localityName.split(',')[0];
+    setSearchQuery(clean);
+    navigateTo('/');
+    const element = document.getElementById('listings-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSelectedType('all');
+    setSelectedBhk([]);
+    setSelectedBudget(BUDGET_RANGES[0]);
+    setOnlyVerified(false);
+    setOnlyOwner(false);
+    setSortBy('relevance');
+  };
+
+  const handleSelectProperty = (prop) => {
+    navigateTo(`/property/${getPropertySlug(prop)}`);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#f4f7fb]">
+      
+      {/* 99acres Header */}
+      <Header
+        selectedCity={selectedCity}
+        setSelectedCity={setSelectedCity}
+        shortlistCount={shortlistIds.length}
+        onOpenShortlist={() => setIsShortlistOpen(true)}
+        onOpenPostProperty={() => setIsPostPropertyOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onNavigate={navigateTo}
+      />
+
+      {/* Route Views: Property Detail Page vs Home Marketplace Listings */}
+      {propertySlug ? (
+        currentProperty ? (
+          <PropertyDetailPage
+            property={currentProperty}
+            allProperties={properties}
+            onNavigate={navigateTo}
+            isShortlisted={shortlistIds.includes(currentProperty.id)}
+            onToggleShortlist={handleToggleShortlist}
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
+        ) : (
+          <div className="flex-1 max-w-4xl mx-auto px-4 py-20 text-center">
+            <Building2 className="w-16 h-16 text-slate-300 mx-auto mb-3" />
+            <h2 className="text-2xl font-black text-slate-800">Property Listing Not Found</h2>
+            <p className="text-sm text-slate-500 mt-2 mb-6 max-w-md mx-auto">
+              The property you are looking for may have been removed, sold, or the link may be invalid.
+            </p>
+            <button
+              onClick={() => navigateTo('/')}
+              className="bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md transition inline-flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Browse All Properties</span>
+            </button>
+          </div>
+        )
+      ) : (
+        <>
+          {/* Hero Multi-Tab Search Engine */}
+          <HeroSearch
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedCity={selectedCity}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedType={selectedType}
+            setSelectedType={setSelectedType}
+            selectedBhk={selectedBhk}
+            setSelectedBhk={setSelectedBhk}
+            selectedBudget={selectedBudget}
+            setSelectedBudget={setSelectedBudget}
+            onlyVerified={onlyVerified}
+            setOnlyVerified={setOnlyVerified}
+            onlyOwner={onlyOwner}
+            setOnlyOwner={setOnlyOwner}
+            onPerformSearch={() => {
+              const el = document.getElementById('listings-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
+
+          {/* Market Intelligence / Trending Localities */}
+          <LocalityCards onSelectLocality={handleSelectLocality} />
+
+          {/* Main Listings Section */}
+          <main id="listings-section" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            
+            {/* Category Shortcuts */}
+            <div className="flex items-center space-x-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
+              <span className="text-xs font-bold text-slate-400 uppercase shrink-0 mr-2">Quick Browse:</span>
+              {PROPERTY_TYPES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedType(t.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition border ${
+                    selectedType === t.id
+                      ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-brand-300 hover:bg-slate-50'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Results Bar & Sorting */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-slate-900">
+                  {filteredProperties.length} Properties in {selectedCity} {searchQuery && `matching "${searchQuery}"`}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Verified listings with photos, floor plans & owner contact details
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3 self-end sm:self-auto">
+                {(searchQuery || selectedType !== 'all' || selectedBhk.length > 0 || onlyVerified || onlyOwner) && (
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs font-bold text-brand-600 hover:text-brand-800 flex items-center space-x-1"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Reset Filters</span>
+                  </button>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <ArrowUpDown className="w-4 h-4 text-slate-400" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="relevance">Sort by: Relevance</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="area-desc">Area: Largest First</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Property Cards Feed */}
+            {filteredProperties.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm my-8">
+                <Building2 className="w-16 h-16 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-xl font-black text-slate-800">No matching properties found</h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                  We couldn't find any properties matching your exact filter criteria in {selectedCity}. Try expanding your budget or resetting filters.
+                </p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-6 bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-md transition"
+                >
+                  Show All Properties
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredProperties.map((prop) => (
+                  <PropertyCard
+                    key={prop.id}
+                    property={prop}
+                    isShortlisted={shortlistIds.includes(prop.id)}
+                    onToggleShortlist={handleToggleShortlist}
+                    onSelectProperty={handleSelectProperty}
+                    onContactClick={handleSelectProperty}
+                  />
+                ))}
+              </div>
+            )}
+
+          </main>
+
+          {/* Interactive Home Loan EMI Calculator */}
+          <EmiCalculator />
+        </>
+      )}
+
+      {/* 99acres Footer */}
+      <Footer />
+
+      {/* Post Free Property Ad Modal */}
+      <PostPropertyModal
+        isOpen={isPostPropertyOpen}
+        onClose={() => setIsPostPropertyOpen(false)}
+        onPropertyAdded={handleAddProperty}
+      />
+
+      {/* User Auth Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+      />
+
+      {/* Shortlist Drawer */}
+      <ShortlistDrawer
+        isOpen={isShortlistOpen}
+        onClose={() => setIsShortlistOpen(false)}
+        shortlistedProperties={shortlistedProperties}
+        onRemoveShortlist={handleRemoveShortlist}
+        onSelectProperty={handleSelectProperty}
+      />
+
+    </div>
+  );
+}
