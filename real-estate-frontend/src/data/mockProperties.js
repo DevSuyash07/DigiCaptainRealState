@@ -311,3 +311,38 @@ export function formatIndianPrice(amount, purpose = 'buy') {
   }
   return `₹ ${num.toLocaleString('en-IN')}`;
 }
+
+export function getPropertySlug(property) {
+  if (!property) return '';
+  const titlePart = (property.title || 'property')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+  return `${titlePart}-${property.id}`;
+}
+
+export function findPropertyBySlug(properties, slug) {
+  if (!slug || !properties || !properties.length) return null;
+  const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+
+  // 1. Direct ID match (e.g. "prop-1")
+  const byId = properties.find((p) => p.id.toLowerCase() === cleanSlug);
+  if (byId) return byId;
+
+  // 2. Slug ending with -id (e.g. "3-bhk-luxury-high-rise-apartment-dlf-the-arbour-prop-1")
+  for (const p of properties) {
+    const pSlug = getPropertySlug(p).toLowerCase();
+    if (cleanSlug === pSlug || cleanSlug.endsWith(`-${p.id.toLowerCase()}`)) {
+      return p;
+    }
+  }
+
+  // 3. Fallback contains match
+  for (const p of properties) {
+    if (cleanSlug.includes(p.id.toLowerCase())) {
+      return p;
+    }
+  }
+
+  return null;
+}
