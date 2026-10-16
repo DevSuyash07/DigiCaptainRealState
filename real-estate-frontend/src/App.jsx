@@ -7,6 +7,7 @@ import PropertyDetailPage from './components/PropertyDetailPage';
 import CollectionPage from './components/CollectionPage';
 import DashboardPage from './components/DashboardPage';
 import PostPropertyModal from './components/PostPropertyModal';
+import EditPropertyModal from './components/EditPropertyModal';
 import EmiCalculator from './components/EmiCalculator';
 import AuthModal from './components/AuthModal';
 import ShortlistDrawer from './components/ShortlistDrawer';
@@ -54,6 +55,7 @@ export default function App() {
 
   // Modals & Drawers
   const [isPostPropertyOpen, setIsPostPropertyOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isShortlistOpen, setIsShortlistOpen] = useState(false);
   
@@ -189,6 +191,63 @@ export default function App() {
     navigateTo(`/property/${getPropertySlug(newProp)}`);
   };
 
+  // Sample listings (and anything added in-browser) use the `prop-` id prefix and
+  // live only in this tab. Anything else came from /api/v1/properties, so an edit
+  // there has to go back to the API instead of only changing local state.
+  const isBrowserOnlyListing = (id) => String(id || '').startsWith('prop-');
+
+  const buildApiPatch = (prop) => {
+    const furnishingMap = {
+      'Fully Furnished': 'FULLY_FURNISHED',
+      'Semi-Furnished': 'SEMI_FURNISHED',
+      Unfurnished: 'UNFURNISHED'
+    };
+    const payload = {
+      title: prop.title,
+      locality: prop.locality,
+      city: prop.city,
+      price: Number(prop.price) || 0
+    };
+    if (prop.description) payload.description = prop.description;
+    if (Number(prop.areaSqFt) > 0) payload.superBuiltUpArea = Number(prop.areaSqFt);
+    const bedrooms = parseInt(String(prop.bhk), 10);
+    if (Number.isFinite(bedrooms)) payload.bedrooms = bedrooms;
+    if (Number(prop.baths) >= 0) payload.bathrooms = Number(prop.baths) || 0;
+    if (Number(prop.balconies) >= 0) payload.balconies = Number(prop.balconies) || 0;
+    if (furnishingMap[prop.furnishing]) payload.furnishingStatus = furnishingMap[prop.furnishing];
+    if (prop.reraId) payload.reraId = prop.reraId;
+    return payload;
+  };
+
+  const handleUpdateProperty = async (updated) => {
+    if (!isBrowserOnlyListing(updated.id)) {
+      const res = await fetch(`/api/v1/properties/${updated.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(buildApiPatch(updated))
+      });
+      let body = null;
+      try {
+        body = await res.json();
+      } catch (err) {
+        body = null;
+      }
+      if (!res.ok) {
+        const reason = (body && (body.message || body.error)) || `API responded ${res.status}`;
+        throw new Error(`Not saved — the properties API rejected this change: ${reason}`);
+      }
+    }
+
+    setProperties((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+
+    return {
+      message: isBrowserOnlyListing(updated.id)
+        ? 'Updated in this browser session. This is a built-in sample listing, so it is not stored in the database.'
+        : 'Saved to the properties API and refreshed in the table.'
+    };
+  };
+
   const handleSelectLocality = (localityName) => {
     const clean = localityName.split(',')[0];
     setSearchQuery(clean);
@@ -264,6 +323,7 @@ export default function App() {
           shortlistIds={shortlistIds}
           onToggleShortlist={handleToggleShortlist}
           onOpenPostProperty={() => setIsPostPropertyOpen(true)}
+          onEditProperty={(prop) => setEditingProperty(prop)}
         />
       ) : isCollectionRoute ? (
         /* Full 99acres Detailed Collection Page with Left Filter Sidebar */
@@ -455,6 +515,14 @@ export default function App() {
         isOpen={isPostPropertyOpen}
         onClose={() => setIsPostPropertyOpen(false)}
         onPropertyAdded={handleAddProperty}
+      />
+
+      {/* Edit an existing listing from the dashboard table */}
+      <EditPropertyModal
+        isOpen={Boolean(editingProperty)}
+        property={editingProperty}
+        onClose={() => setEditingProperty(null)}
+        onSave={handleUpdateProperty}
       />
 
       {/* User Auth Modal */}

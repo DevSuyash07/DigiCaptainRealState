@@ -4,6 +4,7 @@ import {
   MapPin,
   Heart,
   PlusCircle,
+  Pencil,
   Search,
   Layers,
   Filter,
@@ -96,7 +97,8 @@ export default function DashboardPage({
   onNavigate,
   shortlistIds = [],
   onToggleShortlist,
-  onOpenPostProperty
+  onOpenPostProperty,
+  onEditProperty
 }) {
   const [query, setQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
@@ -492,6 +494,16 @@ export default function DashboardPage({
                           >
                             View
                           </button>
+                          {onEditProperty && (
+                            <button
+                              onClick={() => onEditProperty(p)}
+                              title="Edit this listing"
+                              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white border border-brand-200 text-brand-700 hover:bg-brand-50 transition whitespace-nowrap inline-flex items-center space-x-1"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => onToggleShortlist && onToggleShortlist(p.id)}
                             title={shortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
