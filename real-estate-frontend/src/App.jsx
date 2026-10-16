@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from './components/Header';
 import HeroSearch from './components/HeroSearch';
 import LocalityCards from './components/LocalityCards';
 import PropertyCard from './components/PropertyCard';
 import PropertyDetailPage from './components/PropertyDetailPage';
 import CollectionPage from './components/CollectionPage';
+import DashboardPage from './components/DashboardPage';
 import PostPropertyModal from './components/PostPropertyModal';
 import EmiCalculator from './components/EmiCalculator';
 import AuthModal from './components/AuthModal';
@@ -36,6 +37,8 @@ import {
 
 export default function App() {
   const [properties, setProperties] = useState(INITIAL_PROPERTIES);
+  const [dataSource, setDataSource] = useState('loading'); // 'loading' | 'live' | 'offline'
+  const [apiError, setApiError] = useState('');
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [selectedCity, setSelectedCity] = useState('Delhi NCR');
   const [activeTab, setActiveTab] = useState('buy'); // 'buy', 'rent', 'commercial', 'plot'
@@ -74,23 +77,37 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Fetch properties from backend if available
-  useEffect(() => {
+  // Fetch properties from backend if available.
+  // If it fails we still render the sample dataset, but dataSource/apiError make
+  // that visible in the dashboard instead of silently passing mock data off as live.
+  const loadProperties = useCallback(() => {
+    setDataSource('loading');
+    setApiError('');
     fetch('/api/v1/properties')
       .then((res) => {
-        if (!res.ok) throw new Error('Network error');
+        if (!res.ok) throw new Error(`API responded ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        if (data && Array.isArray(data.data) && data.data.length > 0) {
+        const live = data && Array.isArray(data.data) ? data.data : null;
+        if (live && live.length > 0) {
           // Merge with initial rich data
-          setProperties([...data.data, ...INITIAL_PROPERTIES]);
+          setProperties([...live, ...INITIAL_PROPERTIES]);
+          setDataSource('live');
+        } else {
+          setDataSource('offline');
+          setApiError('API reachable but returned no listings');
         }
       })
-      .catch(() => {
-        // Fallback to rich offline dataset
+      .catch((err) => {
+        setDataSource('offline');
+        setApiError(err && err.message ? err.message : 'request failed');
       });
   }, []);
+
+  useEffect(() => {
+    loadProperties();
+  }, [loadProperties]);
 
   // Determine current active route for /property/:slug
   const propertyMatch = currentPath.match(/^\/property\/(.+)$/);
@@ -98,6 +115,8 @@ export default function App() {
   const currentProperty = propertySlug ? findPropertyBySlug(properties, propertySlug) : null;
 
   const isCollectionRoute = currentPath === '/collection' || currentPath === '/properties' || currentPath.startsWith('/collection');
+
+  const isDashboardRoute = currentPath === '/dashboard' || currentPath.startsWith('/dashboard');
 
   // Shortlist Toggle
   const handleToggleShortlist = (propertyId) => {
@@ -234,6 +253,18 @@ export default function App() {
             </button>
           </div>
         )
+      ) : isDashboardRoute ? (
+        /* Internal Listings Dashboard */
+        <DashboardPage
+          properties={properties}
+          dataSource={dataSource}
+          apiError={apiError}
+          onRetryFetch={loadProperties}
+          onNavigate={navigateTo}
+          shortlistIds={shortlistIds}
+          onToggleShortlist={handleToggleShortlist}
+          onOpenPostProperty={() => setIsPostPropertyOpen(true)}
+        />
       ) : isCollectionRoute ? (
         /* Full 99acres Detailed Collection Page with Left Filter Sidebar */
         <CollectionPage
