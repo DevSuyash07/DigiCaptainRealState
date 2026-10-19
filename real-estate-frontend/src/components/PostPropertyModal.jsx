@@ -1344,21 +1344,16 @@ export default function PostPropertyModal({ isOpen, onClose, onPropertyAdded }) 
                     </button>
                     <button
                       type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 py-3 rounded-2xl text-sm flex items-center space-x-2 shadow-lg shadow-emerald-600/30 transition transform active:scale-95"
+                      disabled={!isPhoneVerified}
+                      className={`font-black px-8 py-3 rounded-2xl text-sm flex items-center space-x-2 shadow-lg transition transform ${
+                        isPhoneVerified
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30 cursor-pointer active:scale-95'
+                          : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                      }`}
                     >
-                      <button
-                        type="submit"
-                        disabled={!isPhoneVerified}
-                        className={`font-black px-8 py-3 rounded-2xl text-sm flex items-center space-x-2 shadow-lg transition transform ${
-                          isPhoneVerified
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30 cursor-pointer active:scale-95'
-                            : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                        }`}
-                      >
-                        <Check className="w-5 h-5 stroke-[3]" />
-                        <span>Publish Property Ad (FREE)</span>
-                      </button>
-                    </div>
+                      <Check className="w-5 h-5 stroke-[3]" />
+                      <span>Publish Property Ad (FREE)</span>
+                    </button>
                   </div>
                 </div>
               )}
