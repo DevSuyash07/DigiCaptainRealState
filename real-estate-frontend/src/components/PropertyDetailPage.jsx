@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import MobileOtpVerification from './MobileOtpVerification';
 import { 
   ArrowLeft,
   MapPin, 
@@ -33,6 +34,8 @@ export default function PropertyDetailPage({
   const [inquiryEmail, setInquiryEmail] = useState('');
   const [inquiryMessage, setInquiryMessage] = useState('I am interested in this property. Please share more details.');
   const [inquirySent, setInquirySent] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
   const [copied, setCopied] = useState(false);
 
   // EMI calculator state based on property price
@@ -46,6 +49,8 @@ export default function PropertyDetailPage({
       setLoanAmount(Math.round(property.price * 0.8));
       setActivePhotoIdx(0);
       setInquirySent(false);
+      setIsPhoneVerified(false);
+      setPhoneError('');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [property?.id]);
@@ -64,6 +69,10 @@ export default function PropertyDetailPage({
 
   const handleInquirySubmit = (e) => {
     e.preventDefault();
+    if (!isPhoneVerified) {
+      setPhoneError('Please verify your mobile number with OTP before submitting.');
+      return;
+    }
     setInquirySent(true);
   };
 
@@ -575,14 +584,26 @@ export default function PropertyDetailPage({
                       />
                     </div>
                     <div>
-                      <input
-                        type="tel"
+                      <MobileOtpVerification
+                        phone={inquiryPhone}
+                        onChangePhone={(phone) => {
+                          setInquiryPhone(phone);
+                          setPhoneError('');
+                        }}
+                        isVerified={isPhoneVerified}
+                        onVerifiedChange={(verified) => {
+                          setIsPhoneVerified(verified);
+                          if (verified) setPhoneError('');
+                        }}
+                        label="Your Mobile Number"
                         required
-                        value={inquiryPhone}
-                        onChange={(e) => setInquiryPhone(e.target.value)}
-                        placeholder="Mobile Number (+91)"
-                        className="w-full px-3.5 py-2.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                        variant="dark"
                       />
+                      {phoneError && !isPhoneVerified && (
+                        <p className="text-amber-300 text-[11px] font-semibold mt-1">
+                          ⚠️ {phoneError}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <input
@@ -603,11 +624,21 @@ export default function PropertyDetailPage({
                     </div>
                     <button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black py-3 rounded-xl text-xs shadow-lg transition flex items-center justify-center space-x-2"
+                      disabled={!isPhoneVerified}
+                      className={`w-full py-3 rounded-xl text-xs font-black shadow-lg transition flex items-center justify-center space-x-2 ${
+                        isPhoneVerified
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 cursor-pointer'
+                          : 'bg-slate-700 text-slate-400 cursor-not-allowed shadow-none'
+                      }`}
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>Contact Seller & Request Tour</span>
                     </button>
+                    {!isPhoneVerified && (
+                      <p className="text-[10px] text-amber-300 text-center font-medium">
+                        🔒 Verify mobile number via OTP to enable callback request
+                      </p>
+                    )}
                     <p className="text-[10px] text-slate-400 text-center">
                       Your contact details are encrypted and shared directly with the verified seller.
                     </p>

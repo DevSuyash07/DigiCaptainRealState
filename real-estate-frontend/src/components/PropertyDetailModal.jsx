@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MobileOtpVerification from './MobileOtpVerification';
 import { 
   X, 
   MapPin, 
@@ -32,9 +33,15 @@ export default function PropertyDetailModal({
   const [inquiryPhone, setInquiryPhone] = useState('');
   const [inquiryEmail, setInquiryEmail] = useState('');
   const [inquirySent, setInquirySent] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
 
   const handleInquirySubmit = (e) => {
     e.preventDefault();
+    if (!isPhoneVerified) {
+      setPhoneError('Please verify your mobile number with OTP before submitting.');
+      return;
+    }
     setInquirySent(true);
     setTimeout(() => {
       // Auto reset feedback after 4s
@@ -279,31 +286,52 @@ export default function PropertyDetailModal({
                       />
                     </div>
                     <div>
-                      <input
-                        type="tel"
+                      <MobileOtpVerification
+                        phone={inquiryPhone}
+                        onChangePhone={(phone) => {
+                          setInquiryPhone(phone);
+                          setPhoneError('');
+                        }}
+                        isVerified={isPhoneVerified}
+                        onVerifiedChange={(verified) => {
+                          setIsPhoneVerified(verified);
+                          if (verified) setPhoneError('');
+                        }}
+                        label="Your Mobile Number"
                         required
-                        value={inquiryPhone}
-                        onChange={(e) => setInquiryPhone(e.target.value)}
-                        placeholder="Mobile Number (+91)"
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
                       />
+                      {phoneError && !isPhoneVerified && (
+                        <p className="text-rose-500 text-[11px] font-semibold mt-1">
+                          ⚠️ {phoneError}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <input
                         type="email"
                         value={inquiryEmail}
                         onChange={(e) => setInquiryEmail(e.target.value)}
-                        placeholder="Email Address"
+                        placeholder="Email Address (Optional)"
                         className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none"
                       />
                     </div>
                     <button
                       type="submit"
-                      className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-brand-600/30 flex items-center justify-center space-x-2 transition"
+                      disabled={!isPhoneVerified}
+                      className={`w-full py-2.5 text-white font-bold rounded-xl text-xs shadow-md flex items-center justify-center space-x-2 transition ${
+                        isPhoneVerified
+                          ? 'bg-brand-600 hover:bg-brand-700 shadow-brand-600/30 cursor-pointer'
+                          : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                      }`}
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>Request Instant Callback</span>
                     </button>
+                    {!isPhoneVerified && (
+                      <p className="text-[10px] text-amber-700 text-center font-medium">
+                        🔒 Verify mobile number via OTP to enable callback request
+                      </p>
+                    )}
                     <p className="text-[10px] text-slate-400 text-center">
                       By submitting you agree to 99acres Terms of Use and Privacy Policy.
                     </p>

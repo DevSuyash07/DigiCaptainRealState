@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MobileOtpVerification from './MobileOtpVerification';
 import { X, Lock, Mail, User, Phone, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
 
 export default function AuthModal({ isOpen, onClose }) {
@@ -10,12 +11,17 @@ export default function AuthModal({ isOpen, onClose }) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (mode === 'register' && !isPhoneVerified) {
+      setError('Please verify your mobile number with OTP before registering.');
+      return;
+    }
     setLoading(true);
     setError('');
     setMessage('');
@@ -141,6 +147,23 @@ export default function AuthModal({ isOpen, onClose }) {
                       className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <MobileOtpVerification
+                    phone={phone}
+                    onChangePhone={(p) => {
+                      setPhone(p);
+                      setError('');
+                    }}
+                    isVerified={isPhoneVerified}
+                    onVerifiedChange={(v) => {
+                      setIsPhoneVerified(v);
+                      if (v) setError('');
+                    }}
+                    label="Mobile Number"
+                    required
+                  />
                 </div>
               </>
             )}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MobileOtpVerification from './MobileOtpVerification';
 import { 
   X, 
   Check, 
@@ -142,6 +143,7 @@ export default function PostPropertyModal({ isOpen, onClose, onPropertyAdded }) 
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdProperty, setCreatedProperty] = useState(null);
   const [stepError, setStepError] = useState('');
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
   const inputClass = 'w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500';
   const labelClass = 'block text-xs font-bold text-slate-700 uppercase mb-1.5';
@@ -254,6 +256,10 @@ export default function PostPropertyModal({ isOpen, onClose, onPropertyAdded }) 
       setStepError('Please provide a contact phone number.');
       return;
     }
+    if (!isPhoneVerified) {
+      setStepError('Please verify your mobile number with OTP before publishing your listing.');
+      return;
+    }
 
     const priceNum = Number(formData.price) || (formData.purpose === 'rent' ? 45000 : 8500000);
     const areaNum = Number(formData.areaSqFt) || 1500;
@@ -319,6 +325,7 @@ export default function PostPropertyModal({ isOpen, onClose, onPropertyAdded }) 
   const handleResetAndClose = () => {
     setIsSuccess(false);
     setCreatedProperty(null);
+    setIsPhoneVerified(false);
     setStep(1);
     onClose();
   };
@@ -1268,13 +1275,19 @@ export default function PostPropertyModal({ isOpen, onClose, onPropertyAdded }) 
                         <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                           Mobile Number <span className="text-rose-500">*</span>
                         </label>
-                        <input
-                          type="tel"
+                        <MobileOtpVerification
+                          phone={formData.userPhone}
+                          onChangePhone={(userPhone) => {
+                            setFormData((prev) => ({ ...prev, userPhone }));
+                            setStepError('');
+                          }}
+                          isVerified={isPhoneVerified}
+                          onVerifiedChange={(verified) => {
+                            setIsPhoneVerified(verified);
+                            if (verified) setStepError('');
+                          }}
+                          label="Mobile Number"
                           required
-                          value={formData.userPhone}
-                          onChange={(e) => setFormData({ ...formData, userPhone: e.target.value })}
-                          placeholder="e.g. +91 98765 43210"
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800"
                         />
                       </div>
 
@@ -1331,7 +1344,12 @@ export default function PostPropertyModal({ isOpen, onClose, onPropertyAdded }) 
                     </button>
                     <button
                       type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 py-3 rounded-2xl text-sm flex items-center space-x-2 shadow-lg shadow-emerald-600/30 transition transform active:scale-95"
+                      disabled={!isPhoneVerified}
+                      className={`font-black px-8 py-3 rounded-2xl text-sm flex items-center space-x-2 shadow-lg transition transform ${
+                        isPhoneVerified
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30 cursor-pointer active:scale-95'
+                          : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                      }`}
                     >
                       <Check className="w-5 h-5 stroke-[3]" />
                       <span>Publish Property Ad (FREE)</span>
