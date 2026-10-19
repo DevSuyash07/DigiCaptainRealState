@@ -6,7 +6,8 @@ import {
   Phone, 
   ChevronLeft, 
   ChevronRight, 
-  Share2
+  Share2,
+  Video
 } from 'lucide-react';
 import { formatIndianPrice, getPropertySlug } from '../data/mockProperties';
 
@@ -76,6 +77,11 @@ export default function PropertyCard({
           {property.postedBy.includes('Owner') && (
             <span className="bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
               0% Brokerage
+            </span>
+          )}
+          {property.videoUrl && (
+            <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow flex items-center">
+              <Video className="w-3 h-3 mr-1" /> Video Tour
             </span>
           )}
         </div>
