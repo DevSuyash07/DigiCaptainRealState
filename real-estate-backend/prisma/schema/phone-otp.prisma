@@ -1,0 +1,20 @@
+// 📱 Phone OTP store for standalone mobile verification (forms, signup, lead capture).
+// Sirf OTP ka sha256 hash store hota hai, plain code kabhi DB me nahi jata.
+model PhoneOtp {
+  id         Int       @id @default(autoincrement())
+
+  phone      String    // E.164 normalised, e.g. +919876543210
+  otpHash    String    // sha256(otp) — never the plain code
+  purpose    String    @default("GENERIC") // SIGNUP / POST_PROPERTY / INQUIRY etc.
+
+  attempts   Int       @default(0) // wrong-code attempts against this row
+  consumedAt DateTime? // set once verified, makes the code single-use
+  expiresAt  DateTime
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([phone])
+  @@index([expiresAt])
+  @@index([phone, consumedAt])
+}
