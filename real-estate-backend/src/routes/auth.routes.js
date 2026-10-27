@@ -25,6 +25,9 @@ import {
   resetPasswordSchema 
 } from '../validators/auth.validator.js';
 
+import { requestPhoneOtp, confirmPhoneOtp } from '../controllers/otp.controller.js';
+import { phoneOtpRequestSchema, phoneOtpVerifySchema } from '../validators/otp.validator.js';
+
 import { validateRequest } from '../middlewares/validateRequest.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
@@ -49,6 +52,19 @@ router.post('/login', authLimiter, validateRequest(loginSchema), login);
 // Verification Routes
 router.post('/verify-email', authLimiter, validateRequest(verifyEmailSchema), verifyEmail);
 router.post('/verify-phone', authLimiter, validateRequest(verifyPhoneSchema), verifyPhone);
+
+// STANDALONE PHONE OTP (real SMS) — used by the mobile verification widget
+const otpLimiter = rateLimit({
+  max: 8,
+  windowMs: 15 * 60 * 1000,
+  message: {
+    status: 'fail',
+    message: 'Too many OTP requests from this device. Please try again in 15 minutes.'
+  }
+});
+
+router.post('/phone-otp/request', otpLimiter, validateRequest(phoneOtpRequestSchema), requestPhoneOtp);
+router.post('/phone-otp/verify', otpLimiter, validateRequest(phoneOtpVerifySchema), confirmPhoneOtp);
 
 // RESEND OTP ROUTES (✨ Protected with Validation Middleware)
 router.post('/resend-email-otp', authLimiter, validateRequest(resendEmailOtpSchema), resendEmailOtp);
