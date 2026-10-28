@@ -1,5 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, ShieldCheck, CheckCircle2, RefreshCw, KeyRound, Edit3 } from 'lucide-react';
+import { Phone, CheckCircle2, KeyRound, Edit3 } from 'lucide-react';
+
+// Production me backend doosre host par hota hai, isliye base URL env se aata hai.
+// Local dev me khali string rehti hai aur vite proxy /api ko 5000 par bhej deta hai.
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+const postJson = async (path, body) => {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body)
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.message || `Request failed (${res.status})`);
+  }
+  return data;
+};
 
 export default function MobileOtpVerification({
   phone = '',
@@ -8,14 +33,16 @@ export default function MobileOtpVerification({
   onVerifiedChange,
   label = 'Mobile Number',
   required = true,
-  variant = 'light'
+  variant = 'light',
+  purpose = 'GENERIC'
 }) {
   const [otpSent, setOtpSent] = useState(false);
   const [otpValue, setOtpValue] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
-  const [demoBanner, setDemoBanner] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     let timer;
@@ -29,43 +56,66 @@ export default function MobileOtpVerification({
 
   const cleanPhone = (val) => String(val || '').replace(/[^0-9]/g, '');
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     setErrorMsg('');
+    setInfoMsg('');
+
     const digits = cleanPhone(phone);
     if (digits.length < 10) {
       setErrorMsg('Please enter a valid 10-digit mobile number');
       return;
     }
-    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    setGeneratedOtp(newOtp);
-    setOtpSent(true);
-    setCountdown(30);
-    setDemoBanner(`OTP sent to +91 ${digits.slice(-10)}. Demo Code: ${newOtp}`);
+
+    setSending(true);
+    try {
+      const data = await postJson('/api/v1/auth/phone-otp/request', {
+        phone: digits,
+        purpose
+      });
+      setOtpSent(true);
+      setOtpValue('');
+      setCountdown(data?.data?.resendAfterSeconds || 30);
+      setInfoMsg(`OTP sent by SMS to ${data?.data?.phone || `+91 ${digits.slice(-10)}`}`);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     setErrorMsg('');
-    if (!otpValue.trim()) {
-      setErrorMsg('Please enter the 4-digit OTP');
+
+    if (!/^\d{6}$/.test(otpValue.trim())) {
+      setErrorMsg('Please enter the 6-digit OTP sent to your phone');
       return;
     }
-    if (otpValue.trim() === generatedOtp || otpValue.trim() === '1234' || otpValue.trim() === '9999') {
-      onVerifiedChange?.(true);
+
+    setVerifying(true);
+    try {
+      const data = await postJson('/api/v1/auth/phone-otp/verify', {
+        phone: cleanPhone(phone),
+        otp: otpValue.trim()
+      });
+      onVerifiedChange?.(true, data?.data?.phoneToken || null);
       setOtpSent(false);
-      setDemoBanner('');
-      setErrorMsg('');
-    } else {
-      setErrorMsg('Invalid OTP. Please check the code and try again.');
+      setOtpValue('');
+      setInfoMsg('');
+      setCountdown(0);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setVerifying(false);
     }
   };
 
   const handleChangeNumber = () => {
-    onVerifiedChange?.(false);
+    onVerifiedChange?.(false, null);
     setOtpSent(false);
     setOtpValue('');
-    setGeneratedOtp('');
-    setDemoBanner('');
+    setInfoMsg('');
     setErrorMsg('');
+    setCountdown(0);
   };
 
   const isDark = variant === 'dark';
@@ -96,7 +146,7 @@ export default function MobileOtpVerification({
           value={phone}
           onChange={(e) => {
             onChangePhone(e.target.value);
-            if (isVerified) onVerifiedChange?.(false);
+            if (isVerified) onVerifiedChange?.(false, null);
           }}
           placeholder="98765 43210"
           className={`w-full pl-16 pr-24 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 transition ${
@@ -119,16 +169,22 @@ export default function MobileOtpVerification({
             <button
               type="button"
               onClick={handleSendOtp}
-              disabled={countdown > 0}
+              disabled={countdown > 0 || sending}
               className={`text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition ${
-                countdown > 0
+                countdown > 0 || sending
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   : isDark
                   ? 'bg-amber-400 hover:bg-amber-500 text-slate-950'
                   : 'bg-brand-600 hover:bg-brand-700 text-white'
               }`}
             >
-              {otpSent ? (countdown > 0 ? `Resend (${countdown}s)` : 'Resend OTP') : 'Verify Mobile'}
+              {sending
+                ? 'Sending...'
+                : otpSent
+                ? countdown > 0
+                  ? `Resend (${countdown}s)`
+                  : 'Resend OTP'
+                : 'Verify Mobile'}
             </button>
           )}
         </div>
@@ -141,45 +197,45 @@ export default function MobileOtpVerification({
           <div className="flex items-center justify-between">
             <span className="font-bold flex items-center space-x-1.5">
               <KeyRound className="w-3.5 h-3.5 text-brand-600" />
-              <span>Enter 4-digit OTP sent to your phone</span>
+              <span>Enter the 6-digit OTP sent to your phone</span>
             </span>
           </div>
 
-          {demoBanner && (
-            <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] font-semibold flex items-center justify-between">
-              <span>💬 {demoBanner}</span>
-              <button
-                type="button"
-                onClick={() => setOtpValue(generatedOtp)}
-                className="text-[10px] bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold px-1.5 py-0.5 rounded ml-2"
-              >
-                Auto Fill
-              </button>
+          {infoMsg && (
+            <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-[11px] font-semibold">
+              {infoMsg}
             </div>
           )}
 
           <div className="flex items-center space-x-2">
             <input
               type="text"
-              maxLength={4}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
               value={otpValue}
               onChange={(e) => setOtpValue(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="Enter OTP"
-              className="w-32 px-3 py-1.5 bg-white text-slate-900 border border-slate-300 rounded-lg text-center font-mono font-bold tracking-widest text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-36 px-3 py-1.5 bg-white text-slate-900 border border-slate-300 rounded-lg text-center font-mono font-bold tracking-widest text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             <button
               type="button"
               onClick={handleVerifyOtp}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs shadow-sm transition"
+              disabled={verifying}
+              className={`font-bold px-4 py-1.5 rounded-lg text-xs shadow-sm transition ${
+                verifying
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
             >
-              Confirm OTP
+              {verifying ? 'Checking...' : 'Confirm OTP'}
             </button>
           </div>
         </div>
       )}
 
       {errorMsg && (
-        <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center space-x-1">
+        <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-start space-x-1">
           <span>⚠️</span>
           <span>{errorMsg}</span>
         </p>
