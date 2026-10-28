@@ -47,6 +47,7 @@ const authLimiter = rateLimit({
 // PUBLIC AUTH ROUTES
 // ==========================================
 router.post('/register', authLimiter, validateRequest(registerSchema), register);
+router.post('/signup', authLimiter, validateRequest(registerSchema), register);
 router.post('/login', authLimiter, validateRequest(loginSchema), login);
 
 // Verification Routes

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import MobileOtpVerification from './MobileOtpVerification';
 import { X, Lock, Mail, User, Phone, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
 
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 export default function AuthModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
@@ -27,7 +29,7 @@ export default function AuthModal({ isOpen, onClose }) {
     setMessage('');
 
     try {
-      const endpoint = mode === 'login' ? '/api/v1/auth/login' : '/api/v1/auth/signup';
+      const endpoint = `${API_BASE}${mode === 'login' ? '/api/v1/auth/login' : '/api/v1/auth/signup'}`;
       const body = mode === 'login' 
         ? { email, password }
         : { name, email, password, role, phone };
@@ -35,6 +37,7 @@ export default function AuthModal({ isOpen, onClose }) {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
 
