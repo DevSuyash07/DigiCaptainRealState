@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Building2, 
   MapPin, 
@@ -11,7 +11,10 @@ import {
   X,
   PhoneCall,
   Sparkles,
-  Layers
+  Layers,
+  Navigation,
+  Loader2,
+  Check
 } from 'lucide-react';
 import { CITIES } from '../data/mockProperties';
 
@@ -29,6 +32,129 @@ export default function Header({
 }) {
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchCityQuery, setSearchCityQuery] = useState('');
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setCityDropdownOpen(false);
+      }
+    }
+    if (cityDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [cityDropdownOpen]);
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+    setIsDetectingLocation(true);
+    setLocationError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let detectedCityName = '';
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
+            {
+              headers: { 'Accept-Language': 'en' },
+              signal: controller.signal
+            }
+          );
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data && data.address ? data.address : {};
+            const raw = addr.city || addr.town || addr.state_district || addr.county || addr.state || '';
+            const lower = raw.toLowerCase();
+
+            if (
+              lower.includes('delhi') ||
+              lower.includes('gurgaon') ||
+              lower.includes('gurugram') ||
+              lower.includes('noida') ||
+              lower.includes('ghaziabad') ||
+              lower.includes('faridabad')
+            ) {
+              detectedCityName = 'Delhi NCR';
+            } else {
+              const matched = CITIES.find(
+                (c) => c.name.toLowerCase() === lower || lower.includes(c.name.toLowerCase())
+              );
+              if (matched) {
+                detectedCityName = matched.name;
+              } else if (raw) {
+                detectedCityName = raw;
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore network or abort errors, fallback will resolve
+        }
+
+        if (!detectedCityName) {
+          const CITY_COORDS = [
+            { name: 'Delhi NCR', lat: 28.6139, lon: 77.2090 },
+            { name: 'Mumbai', lat: 19.0760, lon: 72.8777 },
+            { name: 'Bangalore', lat: 12.9716, lon: 77.5946 },
+            { name: 'Hyderabad', lat: 17.3850, lon: 78.4867 },
+            { name: 'Pune', lat: 18.5204, lon: 73.8567 },
+            { name: 'Kolkata', lat: 22.5726, lon: 88.3639 },
+            { name: 'Chennai', lat: 13.0827, lon: 80.2707 },
+            { name: 'Ahmedabad', lat: 23.0225, lon: 72.5714 }
+          ];
+          let closest = CITY_COORDS[0].name;
+          let minD = Infinity;
+          for (const c of CITY_COORDS) {
+            const d = Math.hypot(c.lat - latitude, c.lon - longitude);
+            if (d < minD) {
+              minD = d;
+              closest = c.name;
+            }
+          }
+          detectedCityName = closest;
+        }
+
+        setSelectedCity(detectedCityName);
+        try {
+          localStorage.setItem('selectedCity', detectedCityName);
+        } catch (e) {}
+        setIsDetectingLocation(false);
+        setCityDropdownOpen(false);
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        if (error.code === 1) {
+          setLocationError('Location access was denied. You can still select or type your city.');
+        } else if (error.code === 2) {
+          setLocationError('GPS position unavailable. Please choose your city manually.');
+        } else if (error.code === 3) {
+          setLocationError('Location request timed out. Please choose your city manually.');
+        } else {
+          setLocationError('Could not detect location. Please choose your city manually.');
+        }
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
+
+  const filteredCities = CITIES.filter((city) =>
+    city.name.toLowerCase().includes(searchCityQuery.trim().toLowerCase())
+  );
 
   const handleLogoClick = () => {
     if (onNavigate) onNavigate('/');
@@ -96,34 +222,141 @@ export default function Header({
             </div>
 
             {/* City Selector Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setCityDropdownOpen(!cityDropdownOpen)}
+                onClick={() => {
+                  setCityDropdownOpen(!cityDropdownOpen);
+                  setLocationError('');
+                }}
                 className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-semibold transition"
+                title="Select or detect your location"
+                aria-expanded={cityDropdownOpen}
               >
-                <MapPin className="w-4 h-4 text-brand-600" />
-                <span>{selectedCity}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                <MapPin className="w-4 h-4 text-brand-600 shrink-0" />
+                <span className="max-w-[110px] sm:max-w-[150px] truncate">{selectedCity}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${cityDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {cityDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-50">
-                  <div className="px-3 py-1 text-xs font-bold text-slate-400 uppercase tracking-wider">Select Major Metro</div>
-                  {CITIES.map((city) => (
-                    <button
-                      key={city.id}
-                      onClick={() => {
-                        setSelectedCity(city.name);
-                        setCityDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-brand-50 hover:text-brand-600 transition ${
-                        selectedCity === city.name ? 'font-bold text-brand-600 bg-brand-50' : 'text-slate-700'
-                      }`}
-                    >
-                      <span>{city.name}</span>
-                      {city.popular && <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">Popular</span>}
-                    </button>
-                  ))}
+                <div className="absolute left-0 mt-2 w-80 sm:w-88 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3 z-50">
+                  {/* Manual Search Input */}
+                  <div className="relative mb-2.5">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={searchCityQuery}
+                      onChange={(e) => setSearchCityQuery(e.target.value)}
+                      placeholder="Search city, locality or state..."
+                      className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+                      autoFocus
+                    />
+                    {searchCityQuery && (
+                      <button
+                        onClick={() => setSearchCityQuery('')}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                        title="Clear search"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Geolocation Auto-Detect CTA */}
+                  <button
+                    onClick={handleDetectLocation}
+                    disabled={isDetectingLocation}
+                    className="w-full flex items-center space-x-2.5 p-2 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 font-semibold text-xs transition border border-brand-200 group disabled:opacity-60 text-left"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                      {isDetectingLocation ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Navigation className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+                        <span>{isDetectingLocation ? 'Detecting your location...' : 'Use current location'}</span>
+                        <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-bold uppercase">GPS</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-normal">
+                        Auto-fetch via browser geolocation
+                      </span>
+                    </div>
+                  </button>
+
+                  {locationError && (
+                    <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2 mt-2">
+                      {locationError}
+                    </div>
+                  )}
+
+                  {/* Cities List */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100">
+                    <div className="flex items-center justify-between px-1 mb-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        {searchCityQuery.trim() ? 'Search Results' : 'Major Metros'}
+                      </span>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto space-y-1 pr-0.5">
+                      {/* Custom typed location fallback */}
+                      {searchCityQuery.trim() && !CITIES.some((c) => c.name.toLowerCase() === searchCityQuery.trim().toLowerCase()) && (
+                        <button
+                          onClick={() => {
+                            const manualCity = searchCityQuery.trim();
+                            setSelectedCity(manualCity);
+                            try { localStorage.setItem('selectedCity', manualCity); } catch (e) {}
+                            setSearchCityQuery('');
+                            setCityDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs flex items-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold border border-amber-200 transition mb-1"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="truncate">Use &quot;{searchCityQuery.trim()}&quot;</span>
+                        </button>
+                      )}
+
+                      {filteredCities.map((city) => {
+                        const isSelected = selectedCity === city.name;
+                        return (
+                          <button
+                            key={city.id}
+                            onClick={() => {
+                              setSelectedCity(city.name);
+                              try { localStorage.setItem('selectedCity', city.name); } catch (e) {}
+                              setSearchCityQuery('');
+                              setCityDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition ${
+                              isSelected
+                                ? 'font-bold text-brand-700 bg-brand-50 border border-brand-200'
+                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <MapPin className={`w-3.5 h-3.5 ${isSelected ? 'text-brand-600' : 'text-slate-400'}`} />
+                              <span>{city.name}</span>
+                            </div>
+                            <div className="flex items-center space-x-1.5">
+                              {city.popular && (
+                                <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                                  Popular
+                                </span>
+                              )}
+                              {isSelected && <Check className="w-3.5 h-3.5 text-brand-600" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+
+                      {filteredCities.length === 0 && !searchCityQuery.trim() && (
+                        <div className="text-center py-4 text-xs text-slate-400">
+                          No cities found
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
