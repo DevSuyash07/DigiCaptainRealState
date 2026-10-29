@@ -41,7 +41,20 @@ export default function App() {
   const [dataSource, setDataSource] = useState('loading'); // 'loading' | 'live' | 'offline'
   const [apiError, setApiError] = useState('');
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
-  const [selectedCity, setSelectedCity] = useState('Delhi NCR');
+  const [selectedCity, setSelectedCity] = useState(() => {
+    try {
+      return localStorage.getItem('selectedCity') || 'Delhi NCR';
+    } catch (e) {
+      return 'Delhi NCR';
+    }
+  });
+
+  const handleCityChange = useCallback((city) => {
+    setSelectedCity(city);
+    try {
+      localStorage.setItem('selectedCity', city);
+    } catch (e) {}
+  }, []);
   const [activeTab, setActiveTab] = useState('buy'); // 'buy', 'rent', 'commercial', 'plot'
   
   // Search and Filter states
@@ -274,7 +287,7 @@ export default function App() {
       {/* 99acres Header */}
       <Header
         selectedCity={selectedCity}
-        setSelectedCity={setSelectedCity}
+        setSelectedCity={handleCityChange}
         shortlistCount={shortlistIds.length}
         onOpenShortlist={() => setIsShortlistOpen(true)}
         onOpenPostProperty={() => setIsPostPropertyOpen(true)}
@@ -330,7 +343,7 @@ export default function App() {
         <CollectionPage
           properties={properties}
           selectedCity={selectedCity}
-          setSelectedCity={setSelectedCity}
+          setSelectedCity={handleCityChange}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           shortlistIds={shortlistIds}
