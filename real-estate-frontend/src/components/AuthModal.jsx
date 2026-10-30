@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MobileOtpVerification from './MobileOtpVerification';
 import { X, Lock, Mail, User, Phone, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
+import { setStoredUser } from '../auth/authStore';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -47,16 +48,19 @@ export default function AuthModal({ isOpen, onClose }) {
         throw new Error(data.message || 'Authentication failed');
       }
 
+      const signedInUser = data && data.user ? data.user : {};
+      setStoredUser({
+        name: signedInUser.name || name || email,
+        email: signedInUser.email || email,
+        role: signedInUser.role || role
+      });
+
       setMessage(mode === 'login' ? 'Login Successful! Welcome back.' : 'Account created successfully!');
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (err) {
-      // Fallback for mock demo if backend DB isn't seeded
-      setMessage(`Demo Success: Logged in as ${email || 'Guest User'}`);
-      setTimeout(() => {
-        onClose();
-      }, 1200);
+      setError(err && err.message ? err.message : 'Could not reach the server. Please try again.');
     } finally {
       setLoading(false);
     }
