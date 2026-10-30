@@ -5,7 +5,7 @@ import LocalityCards from './components/LocalityCards';
 import PropertyCard from './components/PropertyCard';
 import PropertyDetailPage from './components/PropertyDetailPage';
 import CollectionPage from './components/CollectionPage';
-import DashboardPage from './components/DashboardPage';
+import RoleDashboard from './components/RoleDashboard';
 import PostPropertyModal from './components/PostPropertyModal';
 import EditPropertyModal from './components/EditPropertyModal';
 import EmiCalculator from './components/EmiCalculator';
@@ -19,6 +19,8 @@ import {
   getPropertySlug,
   findPropertyBySlug
 } from './data/mockProperties';
+import { useAuthUser } from './auth/authStore';
+import { recordPropertyView, useRecentViews } from './auth/activityStore';
 import { 
   Filter, 
   ArrowUpDown, 
@@ -104,7 +106,15 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
-        const live = data && Array.isArray(data.data) ? data.data : null;
+        // The API answers { status, data: { properties: [...] } }. It used to be
+        // read as data.data being the array itself, which made every successful
+        // response look like "no listings" and silently fall back to samples.
+        const payload = data && data.data ? data.data : null;
+        const live = Array.isArray(payload)
+          ? payload
+          : payload && Array.isArray(payload.properties)
+            ? payload.properties
+            : null;
         if (live && live.length > 0) {
           // Merge with initial rich data
           setProperties([...live, ...INITIAL_PROPERTIES]);
@@ -132,6 +142,22 @@ export default function App() {
   const isCollectionRoute = currentPath === '/collection' || currentPath === '/properties' || currentPath.startsWith('/collection');
 
   const isDashboardRoute = currentPath === '/dashboard' || currentPath.startsWith('/dashboard');
+
+  // Signed-in account drives what the dashboard route is allowed to render.
+  const authUser = useAuthUser();
+  const recentViews = useRecentViews(authUser && authUser.email);
+  const authEmail = authUser && authUser.email ? authUser.email : null;
+
+  // "Recently viewed" on the buyer dashboard is built from listings this account
+  // actually opened, recorded here when a /property/:slug route resolves.
+  const viewedPropertyId = currentProperty ? currentProperty.id : null;
+  useEffect(() => {
+    if (!authEmail || !viewedPropertyId || !currentProperty) return;
+    recordPropertyView(authEmail, {
+      ...currentProperty,
+      slug: getPropertySlug(currentProperty)
+    });
+  }, [authEmail, viewedPropertyId]);
 
   // Shortlist Toggle
   const handleToggleShortlist = (propertyId) => {
@@ -326,17 +352,21 @@ export default function App() {
           </div>
         )
       ) : isDashboardRoute ? (
-        /* Internal Listings Dashboard */
-        <DashboardPage
+        /* Private dashboard — signed in only, and different per account role */
+        <RoleDashboard
+          user={authUser}
           properties={properties}
           dataSource={dataSource}
           apiError={apiError}
           onRetryFetch={loadProperties}
           onNavigate={navigateTo}
           shortlistIds={shortlistIds}
+          shortlistedProperties={shortlistedProperties}
+          recentViews={recentViews}
           onToggleShortlist={handleToggleShortlist}
           onOpenPostProperty={() => setIsPostPropertyOpen(true)}
           onEditProperty={(prop) => setEditingProperty(prop)}
+          onOpenAuth={() => setIsAuthOpen(true)}
         />
       ) : isCollectionRoute ? (
         /* Full 99acres Detailed Collection Page with Left Filter Sidebar */
