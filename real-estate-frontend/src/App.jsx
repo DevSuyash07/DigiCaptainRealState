@@ -66,6 +66,30 @@ export default function App() {
   const [onlyOwner, setOnlyOwner] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
 
+  // Auth state
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('currentUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const handleAuthSuccess = useCallback((user) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('currentUser', JSON.stringify(user));
+    } catch (e) {}
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('currentUser');
+    } catch (e) {}
+  }, []);
+
   // Modals & Drawers
   const [isPostPropertyOpen, setIsPostPropertyOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
@@ -296,6 +320,8 @@ export default function App() {
         setActiveTab={setActiveTab}
         onNavigate={navigateTo}
         currentPath={currentPath}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main View Router */}
@@ -542,6 +568,7 @@ export default function App() {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       {/* Shortlist Drawer */}

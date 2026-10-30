@@ -4,7 +4,7 @@ import { X, Lock, Mail, User, Phone, CheckCircle2, ShieldCheck, ArrowRight } fro
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-export default function AuthModal({ isOpen, onClose }) {
+export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   if (!isOpen) return null;
 
   const [mode, setMode] = useState('login'); // 'login' or 'register'
@@ -47,13 +47,29 @@ export default function AuthModal({ isOpen, onClose }) {
         throw new Error(data.message || 'Authentication failed');
       }
 
+      const authenticatedUser = data.user || data.data || {
+        email,
+        name: name || (email ? email.split('@')[0] : 'User'),
+        role: role || 'BUYER',
+        phone: phone || ''
+      };
+      if (onAuthSuccess) onAuthSuccess(authenticatedUser);
+
       setMessage(mode === 'login' ? 'Login Successful! Welcome back.' : 'Account created successfully!');
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (err) {
       // Fallback for mock demo if backend DB isn't seeded
-      setMessage(`Demo Success: Logged in as ${email || 'Guest User'}`);
+      const fallbackUser = {
+        email: email || 'user@99acres.com',
+        name: name || (email ? email.split('@')[0] : 'Guest User'),
+        role: role || 'BUYER',
+        phone: phone || ''
+      };
+      if (onAuthSuccess) onAuthSuccess(fallbackUser);
+
+      setMessage(`Demo Success: Logged in as ${fallbackUser.name}`);
       setTimeout(() => {
         onClose();
       }, 1200);

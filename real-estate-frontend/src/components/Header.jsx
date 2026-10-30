@@ -14,7 +14,8 @@ import {
   Layers,
   Navigation,
   Loader2,
-  Check
+  Check,
+  LogOut
 } from 'lucide-react';
 import { CITIES } from '../data/mockProperties';
 
@@ -28,7 +29,9 @@ export default function Header({
   activeTab,
   setActiveTab,
   onNavigate,
-  currentPath
+  currentPath,
+  currentUser,
+  onLogout
 }) {
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -365,17 +368,6 @@ export default function Header({
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center space-x-1">
             <button
-              onClick={() => onNavigate('/dashboard')}
-              className={`px-3.5 py-2 text-sm font-bold rounded-lg transition flex items-center space-x-1.5 ${
-                currentPath === '/dashboard'
-                  ? 'text-brand-700 bg-brand-50'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Building2 className="w-4 h-4 text-brand-600" />
-              <span>Dashboard</span>
-            </button>
-            <button
               onClick={() => onNavigate('/collection')}
               className={`px-3.5 py-2 text-sm font-bold rounded-lg transition flex items-center space-x-1.5 ${
                 currentPath === '/collection' || currentPath === '/properties'
@@ -449,14 +441,41 @@ export default function Header({
               )}
             </button>
 
-            {/* User Login */}
-            <button
-              onClick={onOpenAuth}
-              className="hidden sm:flex items-center space-x-2 border border-slate-300 hover:border-brand-500 text-slate-700 hover:text-brand-600 px-3.5 py-2 rounded-xl text-sm font-semibold transition bg-white"
-            >
-              <User className="w-4 h-4" />
-              <span>Sign In</span>
-            </button>
+            {/* User Login or Dashboard */}
+            {currentUser ? (
+              <div className="hidden sm:flex items-center space-x-1.5">
+                <button
+                  onClick={() => onNavigate('/dashboard')}
+                  className={`flex items-center space-x-2 border px-3.5 py-2 rounded-xl text-sm font-bold transition ${
+                    currentPath === '/dashboard'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-xs'
+                      : 'border-slate-300 bg-white text-slate-700 hover:border-brand-500 hover:text-brand-600'
+                  }`}
+                  title="Go to Dashboard"
+                >
+                  <Building2 className="w-4 h-4 text-brand-600" />
+                  <span>Dashboard</span>
+                </button>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="p-2 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition"
+                    title="Sign Out"
+                    aria-label="Sign Out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="hidden sm:flex items-center space-x-2 border border-slate-300 hover:border-brand-500 text-slate-700 hover:text-brand-600 px-3.5 py-2 rounded-xl text-sm font-semibold transition bg-white"
+              >
+                <User className="w-4 h-4" />
+                <span>Sign In</span>
+              </button>
+            )}
 
             {/* Mobile menu trigger */}
             <button
@@ -483,16 +502,6 @@ export default function Header({
             <Layers className="w-4 h-4" />
             <span>View All Properties Collection</span>
           </button>
-          <button
-            onClick={() => {
-              onNavigate('/dashboard');
-              setMobileMenuOpen(false);
-            }}
-            className="w-full flex items-center justify-center space-x-2 py-2.5 bg-slate-900 text-white font-bold rounded-xl"
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Open Properties Dashboard</span>
-          </button>
           <div className="grid grid-cols-2 gap-2 pb-3 border-b border-slate-100">
             {['buy', 'rent', 'commercial', 'plot'].map((tab) => (
               <button
@@ -509,13 +518,40 @@ export default function Header({
               </button>
             ))}
           </div>
-          <button
-            onClick={() => { onOpenAuth(); setMobileMenuOpen(false); }}
-            className="w-full flex items-center justify-center space-x-2 py-2.5 bg-slate-100 rounded-xl font-semibold text-slate-800"
-          >
-            <User className="w-4 h-4" />
-            <span>Sign In / Register</span>
-          </button>
+          {currentUser ? (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  onNavigate('/dashboard');
+                  setMobileMenuOpen(false);
+                }}
+                className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-brand-50 border border-brand-200 text-brand-700 rounded-xl font-bold"
+              >
+                <Building2 className="w-4 h-4 text-brand-600" />
+                <span>Go to Dashboard</span>
+              </button>
+              {onLogout && (
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="px-3 py-2.5 border border-rose-200 bg-rose-50 text-rose-700 rounded-xl font-semibold text-xs flex items-center space-x-1"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => { onOpenAuth(); setMobileMenuOpen(false); }}
+              className="w-full flex items-center justify-center space-x-2 py-2.5 bg-slate-100 rounded-xl font-semibold text-slate-800"
+            >
+              <User className="w-4 h-4" />
+              <span>Sign In / Register</span>
+            </button>
+          )}
         </div>
       )}
     </header>
