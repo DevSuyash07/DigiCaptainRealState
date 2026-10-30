@@ -48,10 +48,16 @@ export default function AuthModal({ isOpen, onClose }) {
         throw new Error(data.message || 'Authentication failed');
       }
 
-      const signedInUser = data && data.user ? data.user : {};
+      // The account id is what scopes the dashboard to this person's own
+      // listings, so keep whatever the API returned (it may sit under data.user
+      // or data.data.user depending on the endpoint).
+      const signedInUser =
+        (data && data.user) || (data && data.data && data.data.user) || {};
       setStoredUser({
+        id: signedInUser.id !== undefined ? signedInUser.id : null,
         name: signedInUser.name || name || email,
         email: signedInUser.email || email,
+        phone: signedInUser.phone || phone || '',
         role: signedInUser.role || role
       });
 

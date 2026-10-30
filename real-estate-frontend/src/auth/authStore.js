@@ -30,6 +30,19 @@ export function clearStoredUser() {
   }
 }
 
+// Roles that are allowed to list and manage properties. Kept in step with the
+// backend's restrictTo('OWNER', 'BUILDER', 'AGENT', 'ADMIN') on property routes.
+export const LISTER_ROLES = ['OWNER', 'BUILDER', 'AGENT', 'ADMIN'];
+
+export function getUserRole(user) {
+  const role = user && user.role ? String(user.role).toUpperCase() : '';
+  return role || 'BUYER';
+}
+
+export function isListerRole(user) {
+  return LISTER_ROLES.includes(getUserRole(user));
+}
+
 // Returns the signed-in user (or null) and re-renders whenever it changes,
 // including from another tab via the native storage event.
 export function useAuthUser() {
