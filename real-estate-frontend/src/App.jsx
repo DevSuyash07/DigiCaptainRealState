@@ -146,6 +146,18 @@ export default function App() {
   // Signed-in account drives what the dashboard route is allowed to render.
   const authUser = useAuthUser();
   const recentViews = useRecentViews(authUser && authUser.email);
+  const authEmail = authUser && authUser.email ? authUser.email : null;
+
+  // "Recently viewed" on the buyer dashboard is built from listings this account
+  // actually opened, recorded here when a /property/:slug route resolves.
+  const viewedPropertyId = currentProperty ? currentProperty.id : null;
+  useEffect(() => {
+    if (!authEmail || !viewedPropertyId || !currentProperty) return;
+    recordPropertyView(authEmail, {
+      ...currentProperty,
+      slug: getPropertySlug(currentProperty)
+    });
+  }, [authEmail, viewedPropertyId]);
 
   // Shortlist Toggle
   const handleToggleShortlist = (propertyId) => {
