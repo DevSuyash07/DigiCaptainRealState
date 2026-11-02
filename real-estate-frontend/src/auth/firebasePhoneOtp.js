@@ -90,6 +90,16 @@ const clearRecaptcha = () => {
   if (el) el.innerHTML = '';
 };
 
+// Firebase ne Phone Authentication ko Identity Platform ke neeche shift kar
+// diya hai: naye project me SMS OTP tab tak jaata hi nahi jab tak project
+// Blaze (pay-as-you-go) plan par na ho. Ye hamare code se theek nahi hota --
+// isliye kam se kam asli wajah user ko saaf dikhni chahiye, raw
+// "Firebase: Error (auth/billing-not-enabled)." ke bajaye.
+const BILLING_MESSAGE =
+  'OTP could not be sent because this Firebase project is still on the free Spark plan. ' +
+  'Phone sign-in needs the Blaze (pay-as-you-go) plan — enable billing in the Firebase ' +
+  'console for this project, then send the OTP again.';
+
 const FRIENDLY_ERRORS = {
   'auth/invalid-phone-number': 'That mobile number does not look valid. Enter 10 digits.',
   'auth/missing-phone-number': 'Enter a mobile number first.',
@@ -104,15 +114,23 @@ const FRIENDLY_ERRORS = {
     'The reCAPTCHA check failed on this domain. Add the site domain to the Firebase authorised domains.',
   'auth/invalid-app-credential':
     'Firebase rejected this app’s credentials — check the VITE_FIREBASE_* values.',
+  'auth/billing-not-enabled': BILLING_MESSAGE,
   'auth/invalid-verification-code': 'That OTP is not correct. Check the SMS and try again.',
   'auth/code-expired': 'That OTP has expired. Send a new one.'
 };
 
 const toError = (err) => {
   const code = err && err.code ? err.code : '';
-  const message = FRIENDLY_ERRORS[code] || (err && err.message) || 'OTP request failed';
+  const raw = (err && err.message) || '';
+  // Firebase kabhi isi dikkat ko auth/internal-error me lapet deta hai aur asli
+  // wajah sirf message me hoti hai, isliye server reason bhi match karte hain.
+  const isBilling =
+    code === 'auth/billing-not-enabled' || /BILLING_NOT_ENABLED/i.test(raw);
+  const message = isBilling
+    ? BILLING_MESSAGE
+    : FRIENDLY_ERRORS[code] || raw || 'OTP request failed';
   const out = new Error(message);
-  out.code = code;
+  out.code = isBilling ? 'auth/billing-not-enabled' : code;
   return out;
 };
 
