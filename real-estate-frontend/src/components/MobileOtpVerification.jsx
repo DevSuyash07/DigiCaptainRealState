@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, CheckCircle2, KeyRound, Edit3 } from 'lucide-react';
+import {
+  isFirebaseOtpEnabled,
+  sendFirebaseOtp,
+  confirmFirebaseOtp,
+  resetFirebaseOtp
+} from '../auth/firebasePhoneOtp';
 
 // Production me backend doosre host par hota hai, isliye base URL env se aata hai.
 // Local dev me khali string rehti hai aur vite proxy /api ko 5000 par bhej deta hai.
@@ -56,6 +62,10 @@ export default function MobileOtpVerification({
 
   const cleanPhone = (val) => String(val || '').replace(/[^0-9]/g, '');
 
+  // Firebase config maujood ho to OTP wahan se jaata hai (live site par backend
+  // deploy nahi hota). Warna purana backend route — koi mock OTP kahin nahi.
+  const useFirebase = isFirebaseOtpEnabled();
+
   const handleSendOtp = async () => {
     setErrorMsg('');
     setInfoMsg('');
@@ -68,14 +78,23 @@ export default function MobileOtpVerification({
 
     setSending(true);
     try {
-      const data = await postJson('/api/v1/auth/phone-otp/request', {
-        phone: digits,
-        purpose
-      });
-      setOtpSent(true);
-      setOtpValue('');
-      setCountdown(data?.data?.resendAfterSeconds || 30);
-      setInfoMsg(`OTP sent by SMS to ${data?.data?.phone || `+91 ${digits.slice(-10)}`}`);
+      if (useFirebase) {
+        // Browser se seedha Firebase — asli SMS, bina backend ke.
+        await sendFirebaseOtp(digits);
+        setOtpSent(true);
+        setOtpValue('');
+        setCountdown(30);
+        setInfoMsg(`OTP sent by SMS to +91 ${digits.slice(-10)}`);
+      } else {
+        const data = await postJson('/api/v1/auth/phone-otp/request', {
+          phone: digits,
+          purpose
+        });
+        setOtpSent(true);
+        setOtpValue('');
+        setCountdown(data?.data?.resendAfterSeconds || 30);
+        setInfoMsg(`OTP sent by SMS to ${data?.data?.phone || `+91 ${digits.slice(-10)}`}`);
+      }
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
@@ -93,11 +112,18 @@ export default function MobileOtpVerification({
 
     setVerifying(true);
     try {
-      const data = await postJson('/api/v1/auth/phone-otp/verify', {
-        phone: cleanPhone(phone),
-        otp: otpValue.trim()
-      });
-      onVerifiedChange?.(true, data?.data?.phoneToken || null);
+      let phoneToken = null;
+      if (useFirebase) {
+        const result = await confirmFirebaseOtp(otpValue);
+        phoneToken = result?.idToken || null;
+      } else {
+        const data = await postJson('/api/v1/auth/phone-otp/verify', {
+          phone: cleanPhone(phone),
+          otp: otpValue.trim()
+        });
+        phoneToken = data?.data?.phoneToken || null;
+      }
+      onVerifiedChange?.(true, phoneToken);
       setOtpSent(false);
       setOtpValue('');
       setInfoMsg('');
@@ -110,6 +136,7 @@ export default function MobileOtpVerification({
   };
 
   const handleChangeNumber = () => {
+    if (useFirebase) resetFirebaseOtp();
     onVerifiedChange?.(false, null);
     setOtpSent(false);
     setOtpValue('');
