@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import MobileOtpVerification from './MobileOtpVerification';
 import { X, Lock, Mail, User, Phone, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { setStoredUser } from '../auth/authStore';
-
-const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
+import {
+  emailAuthStatus,
+  signInWithEmailPassword,
+  registerWithEmailPassword,
+  sendPasswordReset,
+  rememberRoleForEmail,
+  roleForEmail
+} from '../auth/firebaseEmailAuth';
 
 export default function AuthModal({ isOpen, onClose }) {
-  if (!isOpen) return null;
-
   const [mode, setMode] = useState('login'); // 'login' or 'register'
   const [role, setRole] = useState('BUYER'); // 'BUYER', 'AGENT', 'OWNER'
   const [email, setEmail] = useState('');
@@ -18,47 +22,40 @@ export default function AuthModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+
+  const authConfig = emailAuthStatus();
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (mode === 'register' && !isPhoneVerified) {
-      setError('Please verify your mobile number with OTP before registering.');
-      return;
-    }
     setLoading(true);
     setError('');
     setMessage('');
 
     try {
-      const endpoint = `${API_BASE}${mode === 'login' ? '/api/v1/auth/login' : '/api/v1/auth/signup'}`;
-      const body = mode === 'login' 
-        ? { email, password }
-        : { name, email, password, role, phone };
+      // Email + password goes through Firebase Auth, not /api/v1/auth/*: this
+      // project's Express backend is not deployed alongside the frontend, so
+      // that fetch could only ever get index.html back on the live site.
+      const account =
+        mode === 'login'
+          ? await signInWithEmailPassword(email, password)
+          : await registerWithEmailPassword({ email, password, name });
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Authentication failed');
+      const signedInEmail = account.email || email;
+      const chosenRole =
+        mode === 'register' ? role : roleForEmail(signedInEmail) || 'BUYER';
+      if (mode === 'register') {
+        rememberRoleForEmail(signedInEmail, chosenRole);
       }
 
-      // The account id is what scopes the dashboard to this person's own
-      // listings, so keep whatever the API returned (it may sit under data.user
-      // or data.data.user depending on the endpoint).
-      const signedInUser =
-        (data && data.user) || (data && data.data && data.data.user) || {};
       setStoredUser({
-        id: signedInUser.id !== undefined ? signedInUser.id : null,
-        name: signedInUser.name || name || email,
-        email: signedInUser.email || email,
-        phone: signedInUser.phone || phone || '',
-        role: signedInUser.role || role
+        id: account.id,
+        name: account.name || name || signedInEmail,
+        email: signedInEmail,
+        phone: phone || '',
+        role: chosenRole
       });
 
       setMessage(mode === 'login' ? 'Login Successful! Welcome back.' : 'Account created successfully!');
@@ -66,7 +63,26 @@ export default function AuthModal({ isOpen, onClose }) {
         onClose();
       }, 1500);
     } catch (err) {
-      setError(err && err.message ? err.message : 'Could not reach the server. Please try again.');
+      setError(err && err.message ? err.message : 'Sign-in failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Enter your email address first, then tap “Forgot password”.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      await sendPasswordReset(email);
+      setResetSent(true);
+      setMessage(`Password reset link sent to ${email}. Check the inbox and the spam folder.`);
+    } catch (err) {
+      setError(err && err.message ? err.message : 'Could not send the reset email.');
     } finally {
       setLoading(false);
     }
@@ -174,9 +190,13 @@ export default function AuthModal({ isOpen, onClose }) {
                       setIsPhoneVerified(v);
                       if (v) setError('');
                     }}
-                    label="Mobile Number"
-                    required
+                    label="Mobile Number (optional)"
                   />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Optional — an email address and password are enough to create the
+                    account. Phone OTP needs Firebase billing, so it no longer blocks
+                    registration.
+                  </p>
                 </div>
               </>
             )}
@@ -210,6 +230,27 @@ export default function AuthModal({ isOpen, onClose }) {
                 />
               </div>
             </div>
+
+            {mode === 'login' && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="text-[11px] font-bold text-brand-600 hover:underline"
+                >
+                  {resetSent ? 'Reset link sent — send again' : 'Forgot password?'}
+                </button>
+              </div>
+            )}
+
+            {!authConfig.enabled && (
+              <div className="p-3 bg-amber-50 text-amber-900 rounded-xl text-[11px] font-semibold">
+                Email sign-in is not configured on this deployment (missing{' '}
+                {authConfig.missing.join(', ')}). Add the VITE_FIREBASE_* variables for this
+                environment in Vercel, then redeploy.
+              </div>
+            )}
 
             <button
               type="submit"
