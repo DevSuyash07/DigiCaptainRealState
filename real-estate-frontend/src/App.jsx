@@ -19,8 +19,14 @@ import {
   getPropertySlug,
   findPropertyBySlug
 } from './data/mockProperties';
-import { useAuthUser } from './auth/authStore';
+import { useAuthUser, getStoredUser } from './auth/authStore';
 import { recordPropertyView, useRecentViews } from './auth/activityStore';
+import { 
+  getStoredShortlist, 
+  saveStoredShortlist, 
+  getCachedProperties, 
+  SHORTLIST_EVENT 
+} from './auth/shortlistStore';
 import { 
   Filter, 
   ArrowUpDown, 
@@ -74,8 +80,11 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isShortlistOpen, setIsShortlistOpen] = useState(false);
   
-  // Shortlisted property IDs
-  const [shortlistIds, setShortlistIds] = useState(['prop-1', 'prop-3']);
+  // Shortlisted property IDs (persisted across refreshes and synced to user account)
+  const [shortlistIds, setShortlistIds] = useState(() => {
+    const user = getStoredUser();
+    return getStoredShortlist(user && user.email ? user.email : null);
+  });
 
   // Handle URL history and routing
   const navigateTo = (path) => {
@@ -159,22 +168,60 @@ export default function App() {
     });
   }, [authEmail, viewedPropertyId]);
 
-  // Shortlist Toggle
-  const handleToggleShortlist = (propertyId) => {
-    setShortlistIds((prev) => 
-      prev.includes(propertyId)
-        ? prev.filter((id) => id !== propertyId)
-        : [...prev, propertyId]
-    );
+  // Keep shortlist in sync with account switches and across tabs
+  useEffect(() => {
+    setShortlistIds(getStoredShortlist(authEmail));
+  }, [authEmail]);
+
+  useEffect(() => {
+    const syncShortlist = () => {
+      setShortlistIds(getStoredShortlist(authEmail));
+    };
+    window.addEventListener(SHORTLIST_EVENT, syncShortlist);
+    window.addEventListener('storage', syncShortlist);
+    return () => {
+      window.removeEventListener(SHORTLIST_EVENT, syncShortlist);
+      window.removeEventListener('storage', syncShortlist);
+    };
+  }, [authEmail]);
+
+  // Shortlist Toggle (persisted to localStorage)
+  const handleToggleShortlist = (propertyId, propObj) => {
+    const rawId = propertyId;
+    setShortlistIds((prev) => {
+      const exists = prev.some((id) => String(id) === String(rawId));
+      const next = exists
+        ? prev.filter((id) => String(id) !== String(rawId))
+        : [...prev, rawId];
+      const targetProp = propObj || properties.find((p) => String(p.id) === String(rawId));
+      saveStoredShortlist(
+        authEmail,
+        next,
+        targetProp ? { [String(rawId)]: targetProp } : {}
+      );
+      return next;
+    });
   };
 
   const handleRemoveShortlist = (propertyId) => {
-    setShortlistIds((prev) => prev.filter((id) => id !== propertyId));
+    const rawId = propertyId;
+    setShortlistIds((prev) => {
+      const next = prev.filter((id) => String(id) !== String(rawId));
+      saveStoredShortlist(authEmail, next);
+      return next;
+    });
   };
 
   const shortlistedProperties = useMemo(() => {
-    return properties.filter((p) => shortlistIds.includes(p.id));
-  }, [properties, shortlistIds]);
+    const cachedMap = getCachedProperties(authEmail);
+    return shortlistIds
+      .map((id) => {
+        const found = properties.find((p) => String(p.id) === String(id));
+        if (found) return found;
+        return cachedMap[String(id)] || null;
+      })
+      .filter(Boolean);
+  }, [properties, shortlistIds, authEmail]);
 
   // Filtered Properties for Home preview
   const filteredProperties = useMemo(() => {
@@ -331,7 +378,7 @@ export default function App() {
             property={currentProperty}
             allProperties={properties}
             onNavigate={navigateTo}
-            isShortlisted={shortlistIds.includes(currentProperty.id)}
+            isShortlisted={shortlistIds.some((id) => String(id) === String(currentProperty.id))}
             onToggleShortlist={handleToggleShortlist}
             onOpenAuth={() => setIsAuthOpen(true)}
           />
@@ -522,7 +569,7 @@ export default function App() {
                   <PropertyCard
                     key={prop.id}
                     property={prop}
-                    isShortlisted={shortlistIds.includes(prop.id)}
+                    isShortlisted={shortlistIds.some((id) => String(id) === String(prop.id))}
                     onToggleShortlist={handleToggleShortlist}
                     onSelectProperty={handleSelectProperty}
                     onContactClick={handleSelectProperty}
