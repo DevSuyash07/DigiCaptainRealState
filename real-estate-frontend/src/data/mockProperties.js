@@ -113,6 +113,7 @@ export const FEATURED_LOCALITIES = [
 export const INITIAL_PROPERTIES = [
   {
     id: 'prop-1',
+    ownerId: 'demo-agent',
     title: '3 BHK Luxury High-Rise Apartment in DLF The Arbour',
     locality: 'Sector 63, Golf Course Extension Road',
     city: 'Delhi NCR',
@@ -151,6 +152,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-2',
+    ownerId: 'demo-owner',
     title: '4 BHK Ultra-Modern Villa with Private Garden & Terrace',
     locality: 'Whitefield - Hope Farm Junction',
     city: 'Bangalore',
@@ -188,6 +190,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-3',
+    ownerId: 'demo-agent',
     title: '2 BHK Premium Sea-View Apartment in Bandra West',
     locality: 'Pali Hill, Bandra West',
     city: 'Mumbai',
@@ -225,6 +228,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-4',
+    ownerId: 'demo-owner',
     title: '3 BHK Spacious High-Rise Apartment for Rent in Gachibowli',
     locality: 'Financial District, Nanakramguda',
     city: 'Hyderabad',
@@ -297,6 +301,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-6',
+    ownerId: 'demo-agent',
     title: 'Residential Gated Plot 250 Sq.Yd in Sector 88',
     locality: 'Faridabad Bypass Road',
     city: 'Delhi NCR',
@@ -333,6 +338,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-7',
+    ownerId: 'demo-agent',
     title: '2 BHK Modern High-Rise Flat in Dwarka Expressway Sector 102',
     locality: 'Sector 102, Dwarka Expressway',
     city: 'Delhi NCR',
@@ -369,6 +375,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-8',
+    ownerId: 'demo-owner',
     title: '1 BHK Fully Furnished Studio Flat in Indiranagar 100ft Road',
     locality: '12th Main, Indiranagar',
     city: 'Bangalore',
@@ -404,6 +411,7 @@ export const INITIAL_PROPERTIES = [
   },
   {
     id: 'prop-9',
+    ownerId: 'demo-owner',
     title: '4 BHK Independent Luxury Floor with Stilt Parking',
     locality: 'Sushant Lok 1, Block C',
     city: 'Delhi NCR',
