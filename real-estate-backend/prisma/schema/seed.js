@@ -30,6 +30,32 @@ async function main() {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash('password123', salt);
 
+  // Deterministic demo accounts for Admin, Owner, and Agent
+  const demoUsers = [
+    {
+      name: 'DigiCaptain Admin',
+      email: 'admin@digicaptain.com',
+      password: hashedPassword,
+      role: 'ADMIN',
+      emailVerified: true,
+    },
+    {
+      name: 'Rajesh Sharma (Owner)',
+      email: 'owner@digicaptain.com',
+      password: hashedPassword,
+      role: 'OWNER',
+      emailVerified: true,
+    },
+    {
+      name: 'Amit Patel (Verified Agent)',
+      email: 'agent@digicaptain.com',
+      password: hashedPassword,
+      role: 'AGENT',
+      emailVerified: true,
+    }
+  ];
+  await prisma.user.createMany({ data: demoUsers, skipDuplicates: true });
+
   const fakeUsers = [];
   for (let i = 0; i < 50; i++) {
     fakeUsers.push({

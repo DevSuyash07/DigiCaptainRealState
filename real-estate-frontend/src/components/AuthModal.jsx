@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import MobileOtpVerification from './MobileOtpVerification';
 import { X, Lock, Mail, User, Phone, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { setStoredUser } from '../auth/authStore';
+import { DEMO_ACCOUNTS, findDemoAccount } from '../auth/demoAccounts';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -19,6 +20,23 @@ export default function AuthModal({ isOpen, onClose }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const handleDemoLogin = (key) => {
+    const acc = DEMO_ACCOUNTS[key];
+    if (!acc) return;
+    setError('');
+    setStoredUser({
+      id: acc.id,
+      name: acc.name,
+      email: acc.email,
+      phone: acc.phone,
+      role: acc.role
+    });
+    setMessage(`Logged in as ${acc.name} (${acc.role})`);
+    setTimeout(() => {
+      onClose();
+    }, 900);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (mode === 'register' && !isPhoneVerified) {
@@ -28,6 +46,26 @@ export default function AuthModal({ isOpen, onClose }) {
     setLoading(true);
     setError('');
     setMessage('');
+
+    // Check dummy demo credentials first
+    if (mode === 'login') {
+      const demoUser = findDemoAccount(email, password);
+      if (demoUser) {
+        setStoredUser({
+          id: demoUser.id,
+          name: demoUser.name,
+          email: demoUser.email,
+          phone: demoUser.phone,
+          role: demoUser.role
+        });
+        setMessage(`Logged in as ${demoUser.name} (${demoUser.role})`);
+        setTimeout(() => {
+          onClose();
+        }, 900);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const endpoint = `${API_BASE}${mode === 'login' ? '/api/v1/auth/login' : '/api/v1/auth/signup'}`;
@@ -113,6 +151,47 @@ export default function AuthModal({ isOpen, onClose }) {
 
         {/* Form Body */}
         <div className="p-6">
+          {mode === 'login' && (
+            <div className="mb-4 p-3 bg-brand-50/70 border border-brand-200 rounded-2xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-brand-900 flex items-center gap-1.5">
+                  <span>⚡ Quick Demo Login</span>
+                  <span className="bg-brand-600 text-white text-[9px] px-1.5 py-0.2 rounded font-bold">1-Click</span>
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">Test 3 Dashboards</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('admin')}
+                  className="py-2 px-1 text-center bg-white hover:bg-brand-600 hover:text-white text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition shadow-xs flex flex-col items-center gap-0.5"
+                >
+                  <span className="text-sm">👑</span>
+                  <span className="font-extrabold">Admin</span>
+                  <span className="text-[9px] opacity-75 font-normal">Superuser</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('owner')}
+                  className="py-2 px-1 text-center bg-white hover:bg-brand-600 hover:text-white text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition shadow-xs flex flex-col items-center gap-0.5"
+                >
+                  <span className="text-sm">🏡</span>
+                  <span className="font-extrabold">Owner</span>
+                  <span className="text-[9px] opacity-75 font-normal">4 Listings</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('agent')}
+                  className="py-2 px-1 text-center bg-white hover:bg-brand-600 hover:text-white text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition shadow-xs flex flex-col items-center gap-0.5"
+                >
+                  <span className="text-sm">💼</span>
+                  <span className="font-extrabold">Agent</span>
+                  <span className="text-[9px] opacity-75 font-normal">4 Listings</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {message && (
             <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-semibold flex items-center">
               <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
