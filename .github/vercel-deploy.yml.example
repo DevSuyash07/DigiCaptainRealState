@@ -1,0 +1,58 @@
+# Move this file to .github/workflows/deploy-vercel.yml to activate it.
+# Full explanation and setup steps: see DEPLOY.md in the repo root.
+#
+# Why it exists: Vercel's Git integration refuses a deploy when the commit
+# author is not a member of the Vercel project. A Vercel Deploy Hook belongs
+# to the project owner, so calling it creates the deploy under the owner's
+# permissions and the author check no longer applies.
+#
+# Requires one repository secret:
+#   VERCEL_DEPLOY_HOOK_URL
+#     from Vercel -> Settings -> Git -> Deploy Hooks (branch: main)
+#     stored in GitHub -> Settings -> Secrets and variables -> Actions
+
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push cancels an older queued run.
+concurrency:
+  group: vercel-production-deploy
+  cancel-in-progress: true
+
+jobs:
+  trigger-deploy:
+    name: Trigger Vercel production deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the Vercel deploy hook
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${HOOK_URL:-}" ]; then
+            echo "::error::Secret VERCEL_DEPLOY_HOOK_URL is not set."
+            echo "Add it in: Settings -> Secrets and variables -> Actions."
+            echo "Get the value from: Vercel -> Settings -> Git -> Deploy Hooks."
+            exit 1
+          fi
+
+          status=$(curl --silent --show-error \
+            --retry 3 --retry-delay 5 --max-time 60 \
+            -X POST "$HOOK_URL" \
+            -o hook-response.json -w '%{http_code}')
+
+          echo "Vercel deploy hook responded: HTTP $status"
+          cat hook-response.json || true
+          echo
+
+          if [ "$status" -ge 300 ]; then
+            echo "::error::Deploy hook call failed (HTTP $status)."
+            exit 1
+          fi
+
+          echo "Deploy queued. Watch it in Vercel -> Deployments."
