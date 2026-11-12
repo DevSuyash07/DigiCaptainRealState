@@ -6,6 +6,7 @@ import {
   confirmFirebaseOtp,
   resetFirebaseOtp
 } from '../auth/firebasePhoneOtp';
+import { isPhoneOtpEnabled } from '../config/featureFlags';
 
 // Production me backend doosre host par hota hai, isliye base URL env se aata hai.
 // Local dev me khali string rehti hai aur vite proxy /api ko 5000 par bhej deta hai.
@@ -49,6 +50,17 @@ export default function MobileOtpVerification({
   const [infoMsg, setInfoMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+
+  // Kill switch: OTP verification abhi off hai (src/config/featureFlags.js).
+  // Off hone par ye field ek normal mobile number input ban jaata hai aur
+  // parent forms ko "verified" report karta hai, taki submit block na ho.
+  const otpEnabled = isPhoneOtpEnabled();
+
+  useEffect(() => {
+    if (!otpEnabled && !isVerified) {
+      onVerifiedChange?.(true, null);
+    }
+  }, [otpEnabled, isVerified, onVerifiedChange]);
 
   useEffect(() => {
     let timer;
@@ -146,6 +158,42 @@ export default function MobileOtpVerification({
   };
 
   const isDark = variant === 'dark';
+
+  // --- OTP off: plain phone input, koi verify button / OTP box nahi ---
+  if (!otpEnabled) {
+    return (
+      <div className="space-y-2">
+        <label
+          className={`block text-xs font-bold uppercase mb-1 ${
+            isDark ? 'text-slate-200' : 'text-slate-700'
+          }`}
+        >
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+
+        <div className="relative flex items-center">
+          <div className="absolute left-3 flex items-center space-x-1 text-slate-400 pointer-events-none">
+            <Phone className="w-3.5 h-3.5" />
+            <span className="text-xs font-bold text-slate-500">+91</span>
+          </div>
+          <input
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
+            required={required}
+            value={phone}
+            onChange={(e) => onChangePhone(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="98765 43210"
+            className={`w-full pl-16 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 transition ${
+              isDark
+                ? 'bg-white text-slate-900 border border-slate-200 focus:ring-amber-400 placeholder:text-slate-400'
+                : 'bg-slate-50 text-slate-900 border border-slate-200 focus:ring-brand-500 placeholder:text-slate-400'
+            }`}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
