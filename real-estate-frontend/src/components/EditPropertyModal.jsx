@@ -362,7 +362,8 @@ export default function EditPropertyModal({ isOpen, property, onClose, onSave })
                 <span>
                   Listings loaded from the API are saved with a PATCH request to
                   <code className="font-mono mx-1">/api/v1/properties/{property.id}</code>.
-                  Built-in sample listings only exist in the browser, so those edits last for this session only.
+                  Sample and browser-posted listings have no database row, so those edits are saved
+                  on this device and stay after a refresh - other devices still see the original.
                 </span>
               </p>
             </form>

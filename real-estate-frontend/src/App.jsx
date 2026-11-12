@@ -283,8 +283,10 @@ export default function App() {
 
   const handleAddProperty = (newProp) => {
     // Written to this browser as well, otherwise the new listing exists only
-    // until the next reload.
-    saveLocalListing(newProp);
+    // until the next reload. A plain numeric id means the API already stored
+    // it, and a stale local copy would shadow the real row - so skip those.
+    const isDatabaseId = /^[0-9]+$/.test(String(newProp && newProp.id ? newProp.id : ''));
+    if (!isDatabaseId) saveLocalListing(newProp);
     setProperties((prev) => [newProp, ...prev]);
     navigateTo(`/property/${getPropertySlug(newProp)}`);
   };
