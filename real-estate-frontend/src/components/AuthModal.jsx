@@ -191,6 +191,7 @@ export default function AuthModal({ isOpen, onClose }) {
                       if (v) setError('');
                     }}
                     label="Mobile Number (optional)"
+                    required={false}
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
                     Optional — an email address and password are enough to create the
