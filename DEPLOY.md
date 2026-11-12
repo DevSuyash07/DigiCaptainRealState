@@ -132,3 +132,37 @@ If the Vercel project's **Root Directory** is not set to `real-estate-frontend`
 (Settings -> General -> Root Directory), fix that too - a deploy that starts
 building and then fails on a missing `package.json` is this setting, not the
 permission error above.
+
+---
+
+## Heads up - which URL is production?
+
+Checked from the public internet on 2026-11-12 (resolvers 1.1.1.1 and
+8.8.8.8):
+
+| What | `digicaptaintechnologies.com` |
+| --- | --- |
+| A records | `84.32.84.136`, `88.222.222.75` (Hostinger) |
+| Name servers | `ns1.dns-parking.com`, `ns2.dns-parking.com` (Hostinger) |
+| TLS certificate | Let's Encrypt, covers the bare name + `www`, valid to 2027-02-07 |
+
+**That domain is not served by Vercel.** A name pointed at Vercel answers on
+`76.76.21.21` (A record) or a `cname.vercel-dns.com` CNAME, and presents a
+Vercel-managed certificate. This one is pointed at Hostinger.
+
+So there are potentially **two** separate things to fix:
+
+1. The deploy permission error above - that is what stops a new build from
+   going live on the project's own `*.vercel.app` URL.
+2. The domain - until `digicaptaintechnologies.com` is added in Vercel
+   (Project -> Settings -> Domains) and its DNS at Hostinger points to Vercel,
+   this domain keeps showing whatever Hostinger is serving, no matter how many
+   times the Vercel deploy succeeds.
+
+If this app is *meant* to live on a `*.vercel.app` URL and the domain belongs
+to a different site, ignore point 2 - but check the `*.vercel.app` URL, not
+this domain, when deciding whether a deploy worked.
+
+Note: mail for this domain is on Google Workspace (MX `aspmx.l.google.com`)
+while SPF only lists `include:_spf.mail.hostinger.com`. That is unrelated to
+deploys, but it means Google-sent mail from this domain is not SPF-authorised.
