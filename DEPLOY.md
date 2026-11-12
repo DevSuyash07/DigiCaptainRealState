@@ -13,7 +13,46 @@ member of the Vercel project, it refuses to deploy. Nothing in this repository
 can change that check.
 
 There are three ways out. Option A is free and permanent, and is what the
-files in this repo set up.
+files in this repo set up. All of them need you logged into the Vercel account
+that **owns** the project - so start with Step 0.
+
+---
+
+## Step 0 - which Vercel account owns this project?
+
+This repository cannot tell you. `.vercel/` is in `.gitignore`, so the project
+id and the owning scope are not committed anywhere here. You have to read the
+name off Vercel itself. Any one of these three works:
+
+**1. From the blocked deployment's own URL (most reliable)**
+
+Open the blocked deployment - from the Vercel email, or on GitHub: the commit
+or PR -> the Vercel check -> **Details**. Look at the address bar:
+
+```
+https://vercel.com/<SCOPE>/<project-name>/<deployment-id>
+                    ^^^^^^^
+```
+
+That `<SCOPE>` is the account or team that owns the project. That is the
+login you need.
+
+**2. From the GitHub side**
+
+This repo -> **Settings -> GitHub Apps** (under Integrations) -> **Vercel ->
+Configure**. The page opens Vercel and shows which Vercel account installed
+the integration on this repository.
+
+**3. From your inbox**
+
+Search your mail for `vercel.com` - the "deployment blocked" / "deployment
+failed" notification only goes to members of the owning scope. Whichever inbox
+received it is an owner's email; log in at vercel.com with that email (or with
+the GitHub account linked to it).
+
+If the scope turns out to be a **team** name rather than a personal one, you
+also need to be a member of that team - ask whoever created it to invite you,
+or to run Option B for you once.
 
 ---
 
