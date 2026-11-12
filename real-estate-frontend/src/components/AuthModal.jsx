@@ -9,7 +9,7 @@ import {
   sendPasswordReset,
   rememberRoleForEmail,
   roleForEmail
-} from '../auth/firebaseEmailAuth';
+} from '../auth/accountAuth';
 
 export default function AuthModal({ isOpen, onClose }) {
   const [mode, setMode] = useState('login'); // 'login' or 'register'
@@ -35,9 +35,12 @@ export default function AuthModal({ isOpen, onClose }) {
     setMessage('');
 
     try {
-      // Email + password goes through Firebase Auth, not /api/v1/auth/*: this
-      // project's Express backend is not deployed alongside the frontend, so
-      // that fetch could only ever get index.html back on the live site.
+      // Which engine runs this is decided in src/auth/accountAuth.js by the
+      // VITE_ENABLE_FIREBASE_EMAIL_AUTH flag. Default (flag off) creates and
+      // verifies the account in this browser, because the Firebase project has
+      // Email/Password switched off and this project's Express backend is not
+      // deployed alongside the frontend — /api/v1/auth/* could only ever get
+      // index.html back on the live site.
       const account =
         mode === 'login'
           ? await signInWithEmailPassword(email, password)
@@ -232,7 +235,7 @@ export default function AuthModal({ isOpen, onClose }) {
               </div>
             </div>
 
-            {mode === 'login' && (
+            {mode === 'login' && authConfig.canResetPassword && (
               <div className="text-right">
                 <button
                   type="button"
@@ -245,11 +248,27 @@ export default function AuthModal({ isOpen, onClose }) {
               </div>
             )}
 
-            {!authConfig.enabled && (
+            {authConfig.mode === 'local' && authConfig.enabled && (
+              <div className="p-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-[11px] font-semibold">
+                Sign-in runs without Firebase right now, so this account is saved in this
+                browser only: it will not work on another device, and clearing this site's
+                data removes it.
+              </div>
+            )}
+
+            {!authConfig.enabled && authConfig.mode === 'firebase' && (
               <div className="p-3 bg-amber-50 text-amber-900 rounded-xl text-[11px] font-semibold">
                 Email sign-in is not configured on this deployment (missing{' '}
                 {authConfig.missing.join(', ')}). Add the VITE_FIREBASE_* variables for this
                 environment in Vercel, then redeploy.
+              </div>
+            )}
+
+            {!authConfig.enabled && authConfig.mode === 'local' && (
+              <div className="p-3 bg-amber-50 text-amber-900 rounded-xl text-[11px] font-semibold">
+                This browser is blocking what sign-in needs ({authConfig.missing.join(', ')}),
+                so an account cannot be created here. Open the https:// address in a normal
+                (non-private) window and try again.
               </div>
             )}
 
