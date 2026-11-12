@@ -19,6 +19,12 @@ import {
   getPropertySlug,
   findPropertyBySlug
 } from './data/mockProperties';
+import {
+  mergeStoredProperties,
+  saveLocalListing,
+  savePropertyEdit,
+  isLocalListing
+} from './data/propertyStore';
 import { useAuthUser, getStoredUser } from './auth/authStore';
 import { recordPropertyView, useRecentViews } from './auth/activityStore';
 import { 
@@ -45,7 +51,9 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [properties, setProperties] = useState(INITIAL_PROPERTIES);
+  // Samples, plus every listing this browser posted and every edit it saved,
+  // so a refresh no longer throws the person's own work away.
+  const [properties, setProperties] = useState(() => mergeStoredProperties(INITIAL_PROPERTIES));
   const [dataSource, setDataSource] = useState('loading'); // 'loading' | 'live' | 'offline'
   const [apiError, setApiError] = useState('');
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
@@ -125,8 +133,9 @@ export default function App() {
             ? payload.properties
             : null;
         if (live && live.length > 0) {
-          // Merge with initial rich data
-          setProperties([...live, ...INITIAL_PROPERTIES]);
+          // Merge with initial rich data, then re-apply this browser's own
+          // saved listings and edits on top so the fetch does not wipe them.
+          setProperties(mergeStoredProperties([...live, ...INITIAL_PROPERTIES]));
           setDataSource('live');
         } else {
           setDataSource('offline');
@@ -273,6 +282,11 @@ export default function App() {
   ]);
 
   const handleAddProperty = (newProp) => {
+    // Written to this browser as well, otherwise the new listing exists only
+    // until the next reload. A plain numeric id means the API already stored
+    // it, and a stale local copy would shadow the real row - so skip those.
+    const isDatabaseId = /^[0-9]+$/.test(String(newProp && newProp.id ? newProp.id : ''));
+    if (!isDatabaseId) saveLocalListing(newProp);
     setProperties((prev) => [newProp, ...prev]);
     navigateTo(`/property/${getPropertySlug(newProp)}`);
   };
@@ -280,7 +294,8 @@ export default function App() {
   // Sample listings (and anything added in-browser) use the `prop-` id prefix and
   // live only in this tab. Anything else came from /api/v1/properties, so an edit
   // there has to go back to the API instead of only changing local state.
-  const isBrowserOnlyListing = (id) => String(id || '').startsWith('prop-');
+  const isBrowserOnlyListing = (id) =>
+    String(id || '').startsWith('prop-') || isLocalListing(id);
 
   const buildApiPatch = (prop) => {
     const furnishingMap = {
@@ -325,11 +340,17 @@ export default function App() {
       }
     }
 
+    if (isBrowserOnlyListing(updated.id)) {
+      // There is no database row to PATCH for these, so the edit is kept on
+      // this device instead of being dropped on the next reload.
+      savePropertyEdit(updated);
+    }
+
     setProperties((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
 
     return {
       message: isBrowserOnlyListing(updated.id)
-        ? 'Updated in this browser session. This is a built-in sample listing, so it is not stored in the database.'
+        ? 'Saved on this device — the change stays after a refresh. This listing has no database row, so other devices still see the original.'
         : 'Saved to the properties API and refreshed in the table.'
     };
   };
