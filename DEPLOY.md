@@ -75,6 +75,41 @@ without any setup. The owner must do it from their own Vercel account.
 
 ---
 
+## Option D - merge a pull request yourself (no setup, works today)
+
+The blocked check is about **who authored the newest commit on `main`**. When
+you merge a pull request on GitHub with the **"Create a merge commit"**
+option, GitHub creates a brand-new merge commit and **you** - the person who
+clicked the button - are its author. If your GitHub account is the one linked
+to the Vercel project owner, that commit passes the check and production
+deploys.
+
+### How to do it
+
+1. Open the pull request on GitHub.
+2. On the green button, open the dropdown and pick **Create a merge commit**.
+3. Click **Merge pull request** -> **Confirm merge**.
+4. Watch Vercel -> **Deployments**. A new deploy should start within a minute,
+   authored by you, and it should not say "blocked".
+
+### The trap
+
+| Merge method | Author of the new commit | Unblocks the deploy? |
+| --- | --- | --- |
+| Create a merge commit | **you** (the merger) | **yes** |
+| Squash and merge | the original commit author | no |
+| Rebase and merge | the original commit author | no |
+
+So **Squash** and **Rebase** will leave production blocked exactly as before.
+It has to be the plain merge commit.
+
+If it is still blocked after a merge commit, then the GitHub account you
+merged with is not the account attached to the Vercel project owner - check
+the owner name in the URL of the blocked deployment
+(`vercel.com/<owner>/...`) and use Option A or C.
+
+---
+
 ## Option C - give the commit author permission
 
 Vercel -> **Settings -> Members** -> invite the GitHub account that authors the
