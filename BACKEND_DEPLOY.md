@@ -86,6 +86,33 @@ own.
   (`src/data/propertyStore.js`). Those never left that device and cannot be
   recovered server-side - they have to be posted again once the API answers.
 
+## Step 5 - user accounts in the database (not in one browser)
+
+Until `VITE_API_BASE_URL` is set, register and sign-in run in
+`src/auth/localAccounts.js`: the account is hashed and saved in **that one
+browser**. It cannot work on a second device, and clearing site data deletes it.
+The modal says so on screen - that is the honest state, not a bug.
+
+The moment `VITE_API_BASE_URL` points at a deployed API, `src/auth/accountAuth.js`
+switches to `src/auth/apiAuth.js`, which calls:
+
+| Action | Request | Stored where |
+| --- | --- | --- |
+| Register | `POST /api/v1/auth/register` | `User` row in MySQL (bcrypt password) |
+| Sign in | `POST /api/v1/auth/login` | nothing new - row is read, JWT returned |
+
+So the same email + password then works on any device, and the account survives
+a cleared browser. Two things to know:
+
+- **The server wants a password of at least 8 characters** (`registerSchema`).
+  The browser-only mode accepted 6, so an old 6-character password has to be
+  set again when registering against the database.
+- **Accounts already created in a browser do not migrate.** They were never sent
+  anywhere, so each person registers once against the API.
+- **Password reset stays hidden** in database mode: the server can email a link
+  to `FRONTEND_URL/reset-password/:token`, but the site has no such page yet, so
+  offering the link would be a dead end.
+
 ## What this branch changed in the code
 
 Four things that would have broken the moment the API went live on its own
