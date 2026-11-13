@@ -39,3 +39,29 @@ export const isPhoneOtpEnabled = () => PHONE_OTP_ENABLED;
 export const FIREBASE_EMAIL_AUTH_ENABLED = truthy(env.VITE_ENABLE_FIREBASE_EMAIL_AUTH);
 
 export const isFirebaseEmailAuthEnabled = () => FIREBASE_EMAIL_AUTH_ENABLED;
+
+// ADMIN_EMAILS: kaun si email se sign in karne par /dashboard par platform-wide
+// admin view khulta hai. Vercel (ya .env) me VITE_ADMIN_EMAILS=
+// "mera@mail.com, partner@mail.com" set karein.
+//
+// Jaan boojh kar role picker me "Admin" option nahi daala gaya -- warna koi bhi
+// register karte waqt khud ko admin bata deta. Ye list build-time env me hai,
+// isliye UI se badli nahi ja sakti. Dhyan rahe: ye UI ka gate hai, data ka nahi
+// -- /api/v1/properties khud public hai, isliye asli access control backend ke
+// ADMIN role aur uske protected routes se hi aata hai.
+
+export const ADMIN_EMAILS = String(env.VITE_ADMIN_EMAILS || '')
+  .split(',')
+  .map((item) => item.trim().toLowerCase())
+  .filter(Boolean);
+
+export const isAdminEmail = (email) => {
+  const mail = String(email || '').trim().toLowerCase();
+  return Boolean(mail) && ADMIN_EMAILS.includes(mail);
+};
+
+// API ka base URL. Khali hone par relative /api/v1/... use hota hai (local dev
+// me vite proxy, production me same origin). Backend alag domain par deploy ho
+// to Vercel me VITE_API_BASE_URL set kar dein.
+
+export const API_BASE_URL = String(env.VITE_API_BASE_URL || '').replace(/\/+$/, '');

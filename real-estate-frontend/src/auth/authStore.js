@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isAdminEmail } from '../config/featureFlags';
 
 const STORAGE_KEY = 'authUser';
 const AUTH_EVENT = 'auth:userchange';
@@ -35,8 +36,15 @@ export function clearStoredUser() {
 export const LISTER_ROLES = ['OWNER', 'BUILDER', 'AGENT', 'ADMIN'];
 
 export function getUserRole(user) {
+  // An admin is decided by VITE_ADMIN_EMAILS, not by what the account itself
+  // claims, so the signup role picker can never hand out the admin view.
+  if (user && user.email && isAdminEmail(user.email)) return 'ADMIN';
   const role = user && user.role ? String(user.role).toUpperCase() : '';
   return role || 'BUYER';
+}
+
+export function isAdminUser(user) {
+  return getUserRole(user) === 'ADMIN';
 }
 
 export function isListerRole(user) {

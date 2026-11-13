@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import DashboardPage from './DashboardPage';
 import BuyerDashboard from './BuyerDashboard';
-import { getUserRole, isListerRole } from '../auth/authStore';
+import AdminDashboard from './AdminDashboard';
+import { getUserRole, isListerRole, isAdminUser } from '../auth/authStore';
 
 // A listing belongs to the signed-in account when the API's ownerId (or the
 // included owner object) matches their user id. Built-in sample listings have no
@@ -83,7 +84,13 @@ export default function RoleDashboard({
     );
   }
 
-  // 2. Buyers never see the listings management table.
+  // 2. Admin (email is in VITE_ADMIN_EMAILS): every listing the API holds,
+  //    whoever posted it — not just this account's own inventory.
+  if (isAdminUser(user)) {
+    return <AdminDashboard user={user} onNavigate={onNavigate} />;
+  }
+
+  // 3. Buyers never see the listings management table.
   if (!isListerRole(user)) {
     return (
       <BuyerDashboard
@@ -96,7 +103,7 @@ export default function RoleDashboard({
     );
   }
 
-  // 3. Owner / agent / builder: the existing table, scoped to their own account.
+  // 4. Owner / agent / builder: the existing table, scoped to their own account.
   const missingId = user.id === undefined || user.id === null;
 
   return (
