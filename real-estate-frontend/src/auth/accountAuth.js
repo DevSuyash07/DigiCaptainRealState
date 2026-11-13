@@ -23,6 +23,7 @@ import {
   registerLocalAccount,
   sendLocalPasswordReset
 } from './localAccounts';
+import { isAdminSignInEmail, signInAdminAccount } from './adminAccount';
 
 // Role (BUYER / OWNER / AGENT) dono modes me same tarike se yaad rehta hai —
 // ye helpers sirf localStorage use karte hain, Firebase ko call nahi karte.
@@ -39,13 +40,29 @@ export const emailAuthStatus = () => {
 
 export const isEmailAuthEnabled = () => emailAuthStatus().enabled;
 
-export const signInWithEmailPassword = (email, password) =>
-  FIREBASE_EMAIL_AUTH_ENABLED
+// Site ki admin email dono modes se pehle check hoti hai, taki admin kisi bhi
+// browser me bina register kiye sign in kar sake (local mode me accounts sirf
+// usi device par hote hain, aur Firebase me Email/Password band hai).
+export const signInWithEmailPassword = async (email, password) => {
+  const admin = signInAdminAccount(email, password);
+  if (admin) return admin;
+
+  return FIREBASE_EMAIL_AUTH_ENABLED
     ? firebaseSignIn(email, password)
     : signInLocalAccount(email, password);
+};
 
-export const registerWithEmailPassword = (payload) =>
-  FIREBASE_EMAIL_AUTH_ENABLED ? firebaseRegister(payload) : registerLocalAccount(payload);
+export const registerWithEmailPassword = async (payload) => {
+  // Admin email par register karne dena matlab ek doosra account bana dena jo
+  // asli admin credential ko dhak de — isliye saaf mana kiya jaata hai.
+  if (isAdminSignInEmail(payload && payload.email)) {
+    throw new Error(
+      'This email is the site admin account — it already exists and cannot be registered. Use Sign In with the admin password instead.'
+    );
+  }
+
+  return FIREBASE_EMAIL_AUTH_ENABLED ? firebaseRegister(payload) : registerLocalAccount(payload);
+};
 
 export const sendPasswordReset = (email) =>
   FIREBASE_EMAIL_AUTH_ENABLED ? firebaseSendPasswordReset(email) : sendLocalPasswordReset(email);

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { getLocalListings } from '../data/propertyStore';
 import { API_BASE_URL } from '../config/featureFlags';
+import { ADMIN_EMAIL, USING_DEFAULT_ADMIN_PASSWORD } from '../auth/adminAccount';
 
 // Platform-wide listings view for an admin account.
 //
@@ -220,6 +221,21 @@ export default function AdminDashboard({ user, onNavigate }) {
         </div>
       ) : null}
 
+      {USING_DEFAULT_ADMIN_PASSWORD ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-2.5 mb-5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-[12px] text-amber-900 leading-relaxed">
+            <strong>This admin account is still on its built-in password.</strong>
+            <p className="mt-1">
+              That password is written in the repository (src/auth/adminAccount.js), so anybody
+              who can read the code can sign in as {ADMIN_EMAIL}. Set
+              <code className="mx-1 px-1 py-0.5 bg-amber-100 rounded">VITE_ADMIN_PASSWORD</code>
+              in Vercel and redeploy — the new value takes over and this warning disappears.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -278,15 +294,27 @@ export default function AdminDashboard({ user, onNavigate }) {
                 localListings.length === 1 ? '' : 's'
               }.`
             : 'This browser is holding none of them.'}
+          {localListings.length > 0 ? (
+            <ul className="mt-2 space-y-1 list-disc pl-4">
+              {localListings.map((prop) => (
+                <li key={`local-${String(prop.id)}`}>
+                  <strong>{titleOf(prop)}</strong> · {placeOf(prop)} · ₹ {formatPrice(prop.price)}
+                  <span className="text-slate-400"> — in this browser only, not server data</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </div>
 
       <div className="mt-3 bg-white border border-slate-200 rounded-2xl p-4 flex items-start space-x-2.5">
         <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
         <div className="text-[11px] text-slate-600 leading-relaxed">
-          <strong>Who sees this page.</strong> The email addresses listed in the
+          <strong>Who sees this page.</strong> The provisioned admin account ({ADMIN_EMAIL}) and
+          any email listed in the
           <code className="mx-1 px-1 py-0.5 bg-slate-100 rounded">VITE_ADMIN_EMAILS</code>
-          environment variable, and nobody else. The signup role picker cannot grant it.
+          environment variable, and nobody else. The signup role picker cannot grant it, and that
+          email cannot be registered as a normal account.
         </div>
       </div>
     </main>
