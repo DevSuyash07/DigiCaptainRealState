@@ -25,7 +25,12 @@ import {
   savePropertyEdit,
   isLocalListing
 } from './data/propertyStore';
-import { useAuthUser, getStoredUser } from './auth/authStore';
+import { useAuthUser, getStoredUser, getAuthToken } from './auth/authStore';
+import { authHeader } from './auth/apiAuth';
+// Backend alag Vercel project / domain par deploy hota hai, isliye URL yahan se
+// banta hai. Hardcoded relative '/api/v1/...' us case me frontend ka index.html
+// (ya 404) le aata tha, isliye live rows kabhi dikhte hi nahi the.
+import { apiUrl } from './config/featureFlags';
 import { recordPropertyView, useRecentViews } from './auth/activityStore';
 import { 
   getStoredShortlist, 
@@ -117,7 +122,7 @@ export default function App() {
   const loadProperties = useCallback(() => {
     setDataSource('loading');
     setApiError('');
-    fetch('/api/v1/properties')
+    fetch(apiUrl('/api/v1/properties'), { credentials: 'include' })
       .then((res) => {
         if (!res.ok) throw new Error(`API responded ${res.status}`);
         return res.json();
@@ -322,9 +327,9 @@ export default function App() {
 
   const handleUpdateProperty = async (updated) => {
     if (!isBrowserOnlyListing(updated.id)) {
-      const res = await fetch(`/api/v1/properties/${updated.id}`, {
+      const res = await fetch(apiUrl(`/api/v1/properties/${updated.id}`), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader(getAuthToken()) },
         credentials: 'include',
         body: JSON.stringify(buildApiPatch(updated))
       });
