@@ -10,7 +10,13 @@
 // switch ka exactly wahi pattern hai: code hataaya nahi, sirf raasta chuna jaata
 // hai.
 
-import { FIREBASE_EMAIL_AUTH_ENABLED } from '../config/featureFlags';
+import { API_AUTH_ENABLED, FIREBASE_EMAIL_AUTH_ENABLED } from '../config/featureFlags';
+import {
+  apiAuthStatus,
+  signInApiAccount,
+  registerApiAccount,
+  sendApiPasswordReset
+} from './apiAuth';
 import {
   emailAuthStatus as firebaseAuthStatus,
   signInWithEmailPassword as firebaseSignIn,
@@ -29,9 +35,18 @@ import { isAdminSignInEmail, signInAdminAccount } from './adminAccount';
 // ye helpers sirf localStorage use karte hain, Firebase ko call nahi karte.
 export { rememberRoleForEmail, roleForEmail } from './firebaseEmailAuth';
 
-export const authMode = () => (FIREBASE_EMAIL_AUTH_ENABLED ? 'firebase' : 'local');
+// Pehli priority database wala raasta hai: account server par banta hai, isliye
+// wahi login har device par chalta hai. API configured na ho to purana behaviour
+// jaisa tha waisa hi rehta hai.
+export const authMode = () => {
+  if (API_AUTH_ENABLED) return 'api';
+  return FIREBASE_EMAIL_AUTH_ENABLED ? 'firebase' : 'local';
+};
 
 export const emailAuthStatus = () => {
+  if (API_AUTH_ENABLED) {
+    return { ...apiAuthStatus(), mode: 'api', canResetPassword: false };
+  }
   if (FIREBASE_EMAIL_AUTH_ENABLED) {
     return { ...firebaseAuthStatus(), mode: 'firebase', canResetPassword: true };
   }
@@ -47,6 +62,8 @@ export const signInWithEmailPassword = async (email, password) => {
   const admin = signInAdminAccount(email, password);
   if (admin) return admin;
 
+  if (API_AUTH_ENABLED) return signInApiAccount(email, password);
+
   return FIREBASE_EMAIL_AUTH_ENABLED
     ? firebaseSignIn(email, password)
     : signInLocalAccount(email, password);
@@ -61,8 +78,12 @@ export const registerWithEmailPassword = async (payload) => {
     );
   }
 
+  if (API_AUTH_ENABLED) return registerApiAccount(payload || {});
+
   return FIREBASE_EMAIL_AUTH_ENABLED ? firebaseRegister(payload) : registerLocalAccount(payload);
 };
 
-export const sendPasswordReset = (email) =>
-  FIREBASE_EMAIL_AUTH_ENABLED ? firebaseSendPasswordReset(email) : sendLocalPasswordReset(email);
+export const sendPasswordReset = (email) => {
+  if (API_AUTH_ENABLED) return sendApiPasswordReset(email);
+  return FIREBASE_EMAIL_AUTH_ENABLED ? firebaseSendPasswordReset(email) : sendLocalPasswordReset(email);
+};
