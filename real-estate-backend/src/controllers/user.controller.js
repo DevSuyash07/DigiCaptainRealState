@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
+import { cookieBaseOptions } from '../utils/cookieOptions.js';
 import AppError from '../utils/AppError.js';
 import catchAsync from '../utils/catchAsync.js';
 
@@ -122,15 +123,11 @@ export const updatePassword = catchAsync(async (req, res, next) => {
     // 4. Clear Dual Cookies
     res.cookie('accessToken', 'loggedout', {
       expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      ...cookieBaseOptions()
     });
     res.cookie('refreshToken', 'loggedout', {
       expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      ...cookieBaseOptions()
     });
 
     res.status(200).json({
@@ -158,15 +155,11 @@ export const deleteMe = catchAsync(async (req, res, next) => {
 
   res.cookie('accessToken', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    ...cookieBaseOptions()
   });
   res.cookie('refreshToken', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    ...cookieBaseOptions()
   });
 
   res.status(204).json({

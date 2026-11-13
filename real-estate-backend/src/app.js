@@ -13,6 +13,11 @@ import propertyRoutes from './routes/property.routes.js';
 
 const app = express();
 
+// Vercel (like any reverse proxy) passes the visitor's real IP in
+// X-Forwarded-For. Without this, express-rate-limit sees a single proxy IP for
+// everybody and warns that the header cannot be trusted.
+app.set('trust proxy', 1);
+
 // --- 1. Global Security & Utility Middlewares ---
 
 // Set security HTTP headers
@@ -29,23 +34,35 @@ if (process.env.NODE_ENV === 'development') {
 app.use(compression());
 
 // Restrict CORS to frontend domains or Vercel deployments
+// Trailing slashes are stripped: an Origin header never has one, so
+// FRONTEND_URL="https://site.com/" would otherwise never match.
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
   'http://localhost:5173'
-].filter(Boolean);
+]
+  .filter(Boolean)
+  .map((origin) => String(origin).trim().replace(/\/+$/, ''));
+
+// credentials:true means the browser attaches this API's auth cookies to the
+// request, so the origin check has to actually reject something. The previous
+// version returned callback(null, true) on its reject path too, which allowed
+// every site on the internet to call authenticated endpoints as whoever was
+// signed in.
+const isOriginAllowed = (origin) => {
+  if (process.env.NODE_ENV !== 'production') return true;
+  if (allowedOrigins.includes(origin)) return true;
+  // Any deployment/preview URL of this project on Vercel.
+  return /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(origin);
+};
 
 app.use(cors({
   origin: (origin, callback) => {
+    // No Origin header at all: same-origin navigation, curl, health checks.
     if (!origin) return callback(null, true);
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app') ||
-      process.env.NODE_ENV !== 'production'
-    ) {
-      return callback(null, true);
-    }
-    return callback(null, true);
+    // `false` = send no CORS headers, so the browser blocks it. Passing an
+    // Error here instead would turn every blocked preflight into a 500.
+    return callback(null, isOriginAllowed(origin));
   },
   credentials: true
 }));

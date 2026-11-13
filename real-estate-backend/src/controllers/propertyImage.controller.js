@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import cloudinary from '../config/cloudinary.js';
-
-const prisma = new PrismaClient();
 
 // Helper function to handle Cloudinary stream upload using Promises
 const uploadStream = (buffer) => {
