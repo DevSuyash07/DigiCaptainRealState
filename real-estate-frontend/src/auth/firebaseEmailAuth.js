@@ -145,6 +145,17 @@ export const sendPasswordReset = async (email) => {
 // khule. Firebase ka uid hi account ki asli pehchaan rehti hai.
 const ROLE_KEY = 'authRolesByEmail';
 
+// Teen fixed accounts, ek-ek role ke liye: buyer, owner, agent. Yahan sirf
+// role mapping hai -- password Firebase Auth me rehta hai, repo me nahi, aur
+// ye accounts bhi asli Firebase accounts hi hain (koi mock login nahi).
+// Fayda: in emails se sign in karte hi sahi dashboard khulta hai, chahe us
+// browser me pehle register kiya ho ya na kiya ho.
+export const DEMO_ROLE_EMAILS = {
+  'demo.buyer@digicaptain.in': 'BUYER',
+  'demo.owner@digicaptain.in': 'OWNER',
+  'demo.agent@digicaptain.in': 'AGENT'
+};
+
 const readRoleMap = () => {
   try {
     const raw = localStorage.getItem(ROLE_KEY);
@@ -166,6 +177,10 @@ export const rememberRoleForEmail = (email, role) => {
 
 export const roleForEmail = (email) => {
   if (!email) return '';
+  const key = String(email).trim().toLowerCase();
+  // Fixed demo accounts ka role inhi ka rehta hai -- isi liye wo "user
+  // specific" hain; baaki sab emails ke liye browser ki yaad dekhi jaati hai.
+  if (DEMO_ROLE_EMAILS[key]) return DEMO_ROLE_EMAILS[key];
   const map = readRoleMap();
-  return map[String(email).trim().toLowerCase()] || '';
+  return map[key] || '';
 };
