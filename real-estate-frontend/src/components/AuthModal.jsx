@@ -44,11 +44,13 @@ export default function AuthModal({ isOpen, onClose }) {
       const account =
         mode === 'login'
           ? await signInWithEmailPassword(email, password)
-          : await registerWithEmailPassword({ email, password, name });
+          : await registerWithEmailPassword({ email, password, name, phone, role });
 
       const signedInEmail = account.email || email;
+      // Database mode me role server se aata hai (us row ka asli role), isliye
+      // wo pehle liya jaata hai; browser-only mode me pehle jaisa hi chalta hai.
       const chosenRole =
-        mode === 'register' ? role : roleForEmail(signedInEmail) || 'BUYER';
+        account.role || (mode === 'register' ? role : roleForEmail(signedInEmail) || 'BUYER');
       if (mode === 'register') {
         rememberRoleForEmail(signedInEmail, chosenRole);
       }
@@ -57,11 +59,20 @@ export default function AuthModal({ isOpen, onClose }) {
         id: account.id,
         name: account.name || name || signedInEmail,
         email: signedInEmail,
-        phone: phone || '',
-        role: chosenRole
+        phone: account.phone || phone || '',
+        role: chosenRole,
+        // JWT access token, sirf database mode me milta hai. Logout isi object
+        // ko hata deta hai, to token bhi saath hi chala jaata hai.
+        token: account.token || ''
       });
 
-      setMessage(mode === 'login' ? 'Login Successful! Welcome back.' : 'Account created successfully!');
+      setMessage(
+        mode === 'login'
+          ? 'Login Successful! Welcome back.'
+          : authConfig.mode === 'api'
+            ? 'Account created in the site database — this email and password now work on any device.'
+            : 'Account created successfully!'
+      );
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -245,6 +256,13 @@ export default function AuthModal({ isOpen, onClose }) {
                 >
                   {resetSent ? 'Reset link sent — send again' : 'Forgot password?'}
                 </button>
+              </div>
+            )}
+
+            {authConfig.mode === 'api' && (
+              <div className="p-3 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-xl text-[11px] font-semibold">
+                This account is saved in the site's own database, so the same email and
+                password work on any device or browser.
               </div>
             )}
 
