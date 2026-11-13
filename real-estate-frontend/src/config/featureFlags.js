@@ -78,3 +78,27 @@ export const isAdminEmail = (email) => {
 // to Vercel me VITE_API_BASE_URL set kar dein.
 
 export const API_BASE_URL = String(env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+// Har API call isi se banti hai, taki backend alag domain par ho to bhi call
+// wahi jaaye (pehle kuch jagah hardcoded relative /api/v1/... tha, jo alag
+// domain par kaam hi nahi karta).
+export const apiUrl = (path) => {
+  const suffix = String(path == null ? '' : path);
+  return `${API_BASE_URL}${suffix.startsWith('/') ? '' : '/'}${suffix}`;
+};
+
+// API_AUTH_ENABLED: account site ke apne database me banega (Express + Prisma +
+// MySQL, src/auth/apiAuth.js) ya nahi. Ye asli "permanent account" hai — wahi
+// email-password har device par chalta hai, kyunki row server par hoti hai.
+//
+// On hone ke liye frontend Vercel project me VITE_API_BASE_URL =
+// https://<api-project>.vercel.app set karein (BACKEND_DEPLOY.md me poora
+// tarika hai) aur redeploy karein. API usi origin par ho to
+// VITE_ENABLE_API_AUTH=true kaafi hai.
+//
+// Jab tak ye off hai, account sirf usi browser me banta hai
+// (src/auth/localAccounts.js) — aur UI me yahi saaf likha rehta hai.
+
+export const API_AUTH_ENABLED = truthy(env.VITE_ENABLE_API_AUTH) || Boolean(API_BASE_URL);
+
+export const isApiAuthEnabled = () => API_AUTH_ENABLED;

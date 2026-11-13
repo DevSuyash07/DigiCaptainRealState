@@ -31,6 +31,14 @@ export function clearStoredUser() {
   }
 }
 
+// Database-backed sign-in ke saath aaya JWT access token. Ye authUser ke andar
+// hi rakha jaata hai, isliye logout (clearStoredUser) karte hi token bhi chala
+// jaata hai — koi alag key peeche nahi rehti.
+export function getAuthToken() {
+  const user = getStoredUser();
+  return user && user.token ? String(user.token) : '';
+}
+
 // Roles that are allowed to list and manage properties. Kept in step with the
 // backend's restrictTo('OWNER', 'BUILDER', 'AGENT', 'ADMIN') on property routes.
 export const LISTER_ROLES = ['OWNER', 'BUILDER', 'AGENT', 'ADMIN'];
