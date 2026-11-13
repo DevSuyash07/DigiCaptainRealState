@@ -2,13 +2,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { promisify } from 'util';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
+import { cookieBaseOptions } from '../utils/cookieOptions.js';
 import AppError from '../utils/AppError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { sendEmail } from '../utils/email.js';
 import { sendSms } from '../utils/sendSms.js';
-
-const prisma = new PrismaClient();
 
 // --- Dual Token Helper Functions ---
 const signAccessToken = (id) => {
@@ -99,8 +98,8 @@ export const register = catchAsync(async (req, res, next) => {
   const accessToken = signAccessToken(newUser.id);
   const refreshToken = signRefreshToken(newUser.id);
 
-  res.cookie('accessToken', accessToken, { expires: new Date(Date.now() + 15 * 60 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
-  res.cookie('refreshToken', refreshToken, { expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+  res.cookie('accessToken', accessToken, { expires: new Date(Date.now() + 15 * 60 * 1000), httpOnly: true, ...cookieBaseOptions() });
+  res.cookie('refreshToken', refreshToken, { expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), httpOnly: true, ...cookieBaseOptions() });
 
   res.status(201).json({
     status: 'success',
@@ -134,8 +133,8 @@ export const login = catchAsync(async (req, res, next) => {
   const accessToken = signAccessToken(user.id);
   const refreshToken = signRefreshToken(user.id);
 
-  res.cookie('accessToken', accessToken, { expires: new Date(Date.now() + 15 * 60 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
-  res.cookie('refreshToken', refreshToken, { expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+  res.cookie('accessToken', accessToken, { expires: new Date(Date.now() + 15 * 60 * 1000), httpOnly: true, ...cookieBaseOptions() });
+  res.cookie('refreshToken', refreshToken, { expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), httpOnly: true, ...cookieBaseOptions() });
 
   user.password = undefined;
   user.emailVerificationOtp = undefined;
@@ -147,8 +146,8 @@ export const login = catchAsync(async (req, res, next) => {
 // 3. LOGOUT CONTROLLER
 // ==========================================
 export const logout = (req, res) => {
-  res.cookie('accessToken', 'loggedout', { expires: new Date(Date.now() + 10 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
-  res.cookie('refreshToken', 'loggedout', { expires: new Date(Date.now() + 10 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+  res.cookie('accessToken', 'loggedout', { expires: new Date(Date.now() + 10 * 1000), httpOnly: true, ...cookieBaseOptions() });
+  res.cookie('refreshToken', 'loggedout', { expires: new Date(Date.now() + 10 * 1000), httpOnly: true, ...cookieBaseOptions() });
   res.status(200).json({ status: 'success' });
 };
 
@@ -167,7 +166,7 @@ export const refreshToken = catchAsync(async (req, res, next) => {
   }
 
   const newAccessToken = signAccessToken(user.id);
-  res.cookie('accessToken', newAccessToken, { expires: new Date(Date.now() + 15 * 60 * 1000), httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+  res.cookie('accessToken', newAccessToken, { expires: new Date(Date.now() + 15 * 60 * 1000), httpOnly: true, ...cookieBaseOptions() });
   res.status(200).json({ status: 'success', accessToken: newAccessToken });
 });
 

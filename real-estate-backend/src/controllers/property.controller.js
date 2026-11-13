@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 
 // Assuming your Prisma singleton is exported from a global DB config file. 
-// If not, instantiate it here:
-const prisma = new PrismaClient();
+// It is: src/utils/prisma.js. Using that singleton keeps one MySQL connection
+// per serverless instance instead of a new one per module.
 
 // ==========================================
 // 1. CREATE PROPERTY

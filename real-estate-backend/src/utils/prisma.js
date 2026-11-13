@@ -11,8 +11,10 @@ const globalForPrisma = globalThis;
 
 export const prisma = globalForPrisma.prismaGlobal ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prismaGlobal = prisma;
-}
+// Cache the client on globalThis in EVERY environment, not just development.
+// On Vercel a warm serverless instance re-uses this one client instead of
+// opening another MySQL connection per invocation, which is what exhausts the
+// database's connection limit under any real traffic.
+globalForPrisma.prismaGlobal = prisma;
 
 export default prisma;
