@@ -50,10 +50,23 @@ export const isFirebaseEmailAuthEnabled = () => FIREBASE_EMAIL_AUTH_ENABLED;
 // -- /api/v1/properties khud public hai, isliye asli access control backend ke
 // ADMIN role aur uske protected routes se hi aata hai.
 
-export const ADMIN_EMAILS = String(env.VITE_ADMIN_EMAILS || '')
-  .split(',')
-  .map((item) => item.trim().toLowerCase())
-  .filter(Boolean);
+// Site ki provisioned admin email — ye hamesha admin rehti hai, chaahe
+// VITE_ADMIN_EMAILS khali ho. Iska password src/auth/adminAccount.js me hai
+// (VITE_ADMIN_PASSWORD se override hota hai). Doosri email chahiye to
+// VITE_ADMIN_EMAIL set karein.
+export const BUILTIN_ADMIN_EMAIL =
+  String(env.VITE_ADMIN_EMAIL || '').trim().toLowerCase() || 'admin@digicaptain.in';
+
+export const ADMIN_EMAILS = Array.from(
+  new Set(
+    [
+      BUILTIN_ADMIN_EMAIL,
+      ...String(env.VITE_ADMIN_EMAILS || '')
+        .split(',')
+        .map((item) => item.trim().toLowerCase())
+    ].filter(Boolean)
+  )
+);
 
 export const isAdminEmail = (email) => {
   const mail = String(email || '').trim().toLowerCase();
