@@ -1,16 +1,11 @@
-// Ek hi jagah se decide hota hai ki email + password kis raaste se chalega.
+// Central authentication service connecting frontend to the backend server API.
 //
-// Flag OFF (default) -> localAccounts.js: account isi browser me banta aur verify
-// hota hai, Firebase ko chhua bhi nahi jaata. Yahi abhi live site par chalta hai,
-// kyunki Firebase project me Email/Password provider band hai aur backend is
-// deployment ke saath deploy nahi hota.
-//
-// Flag ON (Vercel/.env me VITE_ENABLE_FIREBASE_EMAIL_AUTH=true) ->
-// firebaseEmailAuth.js, jo bilkul jaisa tha waisa hi pada hai. Phone OTP wale
-// switch ka exactly wahi pattern hai: code hataaya nahi, sirf raasta chuna jaata
-// hai.
+// By default, authentication now communicates directly with the deployed
+// Express backend (/api/v1/auth/login and /api/v1/auth/register).
+// If VITE_ENABLE_FIREBASE_EMAIL_AUTH=true is set, it uses Firebase.
+// Local in-browser accounts are available as fallback if needed.
 
-import { FIREBASE_EMAIL_AUTH_ENABLED } from '../config/featureFlags';
+import { FIREBASE_EMAIL_AUTH_ENABLED, API_BASE_URL } from '../config/featureFlags';
 import {
   emailAuthStatus as firebaseAuthStatus,
   signInWithEmailPassword as firebaseSignIn,
@@ -25,44 +20,137 @@ import {
 } from './localAccounts';
 import { isAdminSignInEmail, signInAdminAccount } from './adminAccount';
 
-// Role (BUYER / OWNER / AGENT) dono modes me same tarike se yaad rehta hai —
-// ye helpers sirf localStorage use karte hain, Firebase ko call nahi karte.
+// Role (BUYER / OWNER / AGENT) persist helper
 export { rememberRoleForEmail, roleForEmail } from './firebaseEmailAuth';
 
-export const authMode = () => (FIREBASE_EMAIL_AUTH_ENABLED ? 'firebase' : 'local');
+export const authMode = () => (FIREBASE_EMAIL_AUTH_ENABLED ? 'firebase' : 'server');
 
 export const emailAuthStatus = () => {
   if (FIREBASE_EMAIL_AUTH_ENABLED) {
     return { ...firebaseAuthStatus(), mode: 'firebase', canResetPassword: true };
   }
-  return { ...localAuthStatus(), mode: 'local', canResetPassword: false };
+  return { enabled: true, mode: 'server', canResetPassword: true, missing: [] };
 };
 
 export const isEmailAuthEnabled = () => emailAuthStatus().enabled;
 
-// Site ki admin email dono modes se pehle check hoti hai, taki admin kisi bhi
-// browser me bina register kiye sign in kar sake (local mode me accounts sirf
-// usi device par hote hain, aur Firebase me Email/Password band hai).
-export const signInWithEmailPassword = async (email, password) => {
-  const admin = signInAdminAccount(email, password);
+const apiUrl = (path) => `${API_BASE_URL}${path}`;
+
+export const signInWithEmailPassword = async (emailOrPhone, password) => {
+  const admin = signInAdminAccount(emailOrPhone, password);
   if (admin) return admin;
 
-  return FIREBASE_EMAIL_AUTH_ENABLED
-    ? firebaseSignIn(email, password)
-    : signInLocalAccount(email, password);
+  if (FIREBASE_EMAIL_AUTH_ENABLED) {
+    return firebaseSignIn(emailOrPhone, password);
+  }
+
+  const res = await fetch(apiUrl('/api/v1/auth/login'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ emailOrPhone: String(emailOrPhone || '').trim(), password })
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (err) {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const msg = (data && (data.message || data.error)) || `Sign-in failed (status ${res.status})`;
+    throw new Error(msg);
+  }
+
+  const user = (data && data.data && data.data.user) || {};
+  return {
+    id: user.id,
+    name: user.name || user.email || emailOrPhone,
+    email: user.email || (String(emailOrPhone).includes('@') ? emailOrPhone : ''),
+    phone: user.phone || (!String(emailOrPhone).includes('@') ? emailOrPhone : ''),
+    role: user.role === 'USER' ? 'BUYER' : (user.role || 'BUYER'),
+    accessToken: data && data.accessToken
+  };
 };
 
 export const registerWithEmailPassword = async (payload) => {
-  // Admin email par register karne dena matlab ek doosra account bana dena jo
-  // asli admin credential ko dhak de — isliye saaf mana kiya jaata hai.
   if (isAdminSignInEmail(payload && payload.email)) {
     throw new Error(
       'This email is the site admin account — it already exists and cannot be registered. Use Sign In with the admin password instead.'
     );
   }
 
-  return FIREBASE_EMAIL_AUTH_ENABLED ? firebaseRegister(payload) : registerLocalAccount(payload);
+  if (FIREBASE_EMAIL_AUTH_ENABLED) {
+    return firebaseRegister(payload);
+  }
+
+  const roleInput = String((payload && payload.role) || 'BUYER').toUpperCase();
+  const backendRole = roleInput === 'BUYER' ? 'USER' : roleInput;
+
+  const requestBody = {
+    name: String((payload && payload.name) || '').trim(),
+    email: String((payload && payload.email) || '').trim().toLowerCase(),
+    password: String((payload && payload.password) || ''),
+    role: backendRole
+  };
+
+  if (payload && payload.phone && String(payload.phone).trim()) {
+    requestBody.phone = String(payload.phone).trim();
+  }
+
+  const res = await fetch(apiUrl('/api/v1/auth/register'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(requestBody)
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (err) {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const msg = (data && (data.message || data.error)) || `Registration failed (status ${res.status})`;
+    throw new Error(msg);
+  }
+
+  const user = (data && data.data && data.data.user) || {};
+  return {
+    id: user.id,
+    name: user.name || payload.name,
+    email: user.email || payload.email,
+    phone: user.phone || (payload && payload.phone) || '',
+    role: user.role === 'USER' ? 'BUYER' : (user.role || (payload && payload.role) || 'BUYER'),
+    accessToken: data && data.accessToken
+  };
 };
 
-export const sendPasswordReset = (email) =>
-  FIREBASE_EMAIL_AUTH_ENABLED ? firebaseSendPasswordReset(email) : sendLocalPasswordReset(email);
+export const sendPasswordReset = async (email) => {
+  if (FIREBASE_EMAIL_AUTH_ENABLED) {
+    return firebaseSendPasswordReset(email);
+  }
+
+  const res = await fetch(apiUrl('/api/v1/auth/forgot-password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: String(email || '').trim().toLowerCase() })
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (err) {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const msg = (data && (data.message || data.error)) || `Password reset failed (status ${res.status})`;
+    throw new Error(msg);
+  }
+
+  return data;
+};

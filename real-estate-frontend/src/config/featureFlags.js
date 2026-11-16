@@ -55,7 +55,7 @@ export const isFirebaseEmailAuthEnabled = () => FIREBASE_EMAIL_AUTH_ENABLED;
 // (VITE_ADMIN_PASSWORD se override hota hai). Doosri email chahiye to
 // VITE_ADMIN_EMAIL set karein.
 export const BUILTIN_ADMIN_EMAIL =
-  String(env.VITE_ADMIN_EMAIL || '').trim().toLowerCase() || 'admin@digicaptain.in';
+  String(env.VITE_ADMIN_EMAIL || '').trim().toLowerCase() || 'suyash@digicaptaintechnologies.com';
 
 export const ADMIN_EMAILS = Array.from(
   new Set(
