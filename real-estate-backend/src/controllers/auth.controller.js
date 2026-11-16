@@ -63,9 +63,12 @@ export const register = catchAsync(async (req, res, next) => {
     hashedPhoneOtp = crypto.createHash('sha256').update(phoneOtp).digest('hex');
   }
 
+  const allowedRoles = ['USER', 'OWNER', 'AGENT', 'BUILDER'];
+  const userRole = role && allowedRoles.includes(role) ? role : 'USER';
+
   const newUser = await prisma.user.create({
     data: {
-      name, email, phone, password: hashedPassword, role: role || 'USER',
+      name, email, phone: phone || null, password: hashedPassword, role: userRole,
       emailVerified: false, emailVerificationOtp: hashedEmailOtp, emailVerificationExpiresAt: otpExpires,
       phoneVerified: false, phoneVerificationOtp: hashedPhoneOtp, phoneVerificationExpiresAt: phone ? otpExpires : null
     }

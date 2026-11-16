@@ -44,11 +44,11 @@ export default function AuthModal({ isOpen, onClose }) {
       const account =
         mode === 'login'
           ? await signInWithEmailPassword(email, password)
-          : await registerWithEmailPassword({ email, password, name });
+          : await registerWithEmailPassword({ email, password, name, phone, role });
 
       const signedInEmail = account.email || email;
       const chosenRole =
-        mode === 'register' ? role : roleForEmail(signedInEmail) || 'BUYER';
+        account.role || (mode === 'register' ? role : roleForEmail(signedInEmail) || 'BUYER');
       if (mode === 'register') {
         rememberRoleForEmail(signedInEmail, chosenRole);
       }
@@ -57,8 +57,9 @@ export default function AuthModal({ isOpen, onClose }) {
         id: account.id,
         name: account.name || name || signedInEmail,
         email: signedInEmail,
-        phone: phone || '',
-        role: chosenRole
+        phone: account.phone || phone || '',
+        role: chosenRole,
+        token: account.accessToken
       });
 
       setMessage(mode === 'login' ? 'Login Successful! Welcome back.' : 'Account created successfully!');
@@ -206,15 +207,17 @@ export default function AuthModal({ isOpen, onClose }) {
             )}
 
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">Email Address</label>
+              <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
+                {mode === 'login' ? 'Email or Mobile Number' : 'Email Address'}
+              </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
-                  type="email"
+                  type={mode === 'login' ? 'text' : 'email'}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={mode === 'login' ? 'name@example.com or phone' : 'name@example.com'}
                   className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500"
                 />
               </div>
