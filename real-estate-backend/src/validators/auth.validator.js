@@ -10,11 +10,12 @@ export const registerSchema = z.object({
   body: z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Invalid email address format"),
-    phone: z.string()
-      .regex(phoneRegex, "Invalid phone number format. Include country code if necessary.")
-      .optional(),
+    phone: z.union([
+      z.string().regex(phoneRegex, "Invalid phone number format. Include country code if necessary."),
+      z.literal('')
+    ]).optional(),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    role: z.enum(['USER', 'OWNER', 'AGENT', 'BUILDER', 'ADMIN']).optional()
+    role: z.enum(['USER', 'OWNER', 'AGENT', 'BUILDER']).optional()
   })
 });
 
