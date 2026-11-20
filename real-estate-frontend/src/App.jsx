@@ -481,7 +481,7 @@ export default function App() {
               <div className="space-y-2 text-center md:text-left">
                 <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider text-amber-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>99acres Collection View</span>
+                  <span>NCRBRIX Collection View</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black">
                   Explore All Properties with Detailed Filters

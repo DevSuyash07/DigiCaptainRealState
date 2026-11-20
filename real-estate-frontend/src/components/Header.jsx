@@ -210,18 +210,23 @@ export default function Header({
           <div className="flex items-center space-x-4 lg:space-x-6">
             <div 
               onClick={handleLogoClick}
-              className="flex items-center cursor-pointer group"
+              className="flex flex-col cursor-pointer group py-1"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 via-brand-500 to-sky-400 flex items-center justify-center text-white font-black text-xl shadow-md group-hover:scale-105 transition-transform">
-                99
+              <div className="flex items-baseline tracking-tight leading-none group-hover:opacity-95 transition-opacity">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">NCR</span>
+                <span className="text-2xl sm:text-3xl font-black text-[#002e54] flex items-baseline tracking-tight">
+                  <span>BR</span>
+                  <span className="inline-flex items-center justify-center px-[1px] self-center">
+                    <svg className="w-3.5 h-6 text-[#002e54]" viewBox="0 0 14 28" fill="currentColor">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M6 1h2v4H6z M4 5h6v3H4z M2 8h10v20H2z M4 11h2v2.5H4z M8 11h2v2.5H8z M4 15h2v2.5H4z M8 15h2v2.5H8z M4 19h2v2.5H4z M8 19h2v2.5H8z M4 23h2v2.5H4z M8 23h2v2.5H8z" />
+                    </svg>
+                  </span>
+                  <span>X</span>
+                </span>
               </div>
-              <div className="ml-2.5">
-                <div className="flex items-center">
-                  <span className="text-2xl font-black tracking-tight text-brand-700">acres</span>
-                  <span className="text-xs bg-amber-500 text-slate-900 font-extrabold px-1.5 py-0.5 rounded ml-1.5 uppercase">India</span>
-                </div>
-                <span className="text-[10px] text-slate-500 block -mt-1 font-medium tracking-wide">Property Search Made Simple</span>
-              </div>
+              <span className="text-[9px] sm:text-[10px] text-slate-900 font-extrabold tracking-[0.22em] uppercase mt-1 leading-none">
+                BUILDER | DEVELOPER | PARTNER
+              </span>
             </div>
 
             {/* City Selector Dropdown */}
@@ -377,7 +382,7 @@ export default function Header({
             >
               <Layers className="w-4 h-4 text-brand-600" />
               <span>All Collection</span>
-              <span className="text-[10px] bg-amber-400 text-slate-900 font-extrabold px-1.5 py-0.2 rounded-full uppercase">99acres</span>
+              <span className="text-[10px] bg-amber-400 text-slate-900 font-extrabold px-1.5 py-0.2 rounded-full uppercase">NCRBRIX</span>
             </button>
             <button
               onClick={() => handleTabClick('buy')}
